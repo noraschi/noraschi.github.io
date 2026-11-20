@@ -263,7 +263,12 @@ body.dark-mode,
 html, body {
   background: var(--body-bg, transparent) !important;
   color: var(--on-surface) !important;
-  overflow-y: hidden;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  height: auto !important;
+  min-height: 100% !important;
+  position: static !important;
+  touch-action: pan-x pan-y !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -273,6 +278,7 @@ html, body {
   max-width: 100% !important;
   padding-inline: 0 !important;
   box-sizing: border-box;
+  overflow: visible;
 }
 
 button {
@@ -383,7 +389,12 @@ button:hover {
     html, body {
       margin: 0;
       padding: 0;
-      overflow-y: hidden;
+      overflow-x: auto !important;
+      overflow-y: auto !important;
+      height: auto !important;
+      min-height: 100% !important;
+      position: static !important;
+      touch-action: pan-x pan-y !important;
       font-family: var(--ff-sans, system-ui, -apple-system, sans-serif);
       color: var(--on-surface, #000000);
       background: transparent;
@@ -397,6 +408,7 @@ button:hover {
       flex-direction: column;
       gap: var(--lumi-sys-spacing--m, 12px);
       box-sizing: border-box;
+      overflow: visible;
     }
 
     .header-card {
@@ -580,8 +592,7 @@ button:hover {
 <body>
 
 <div class="widget-container">
-  
-  <!-- Header Card -->
+
   <div class="header-card">
     <div class="header-title-row">
       <h2 style="margin: 0; font-size: 18px; font-weight: 600;">Simulador Espinopélvico (SRS-Schwab)</h2>
@@ -591,7 +602,7 @@ button:hover {
         <button type="button" class="lumi-btn scenario-btn" id="btn-decompensated">Descompensação Franca</button>
       </div>
     </div>
-    
+
     <div class="equation-banner">
       <span>Morfologia Fixa: </span>
       <span class="eq-val pi" id="eq-pi">PI 55°</span>
@@ -602,14 +613,12 @@ button:hover {
     </div>
   </div>
 
-  <!-- Canvas Simulation Viewport -->
   <div class="widget-viewport" id="viewport-zone">
     <div style="position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden;">
       <canvas id="simCanvas" style="display: block; width: 100%; height: 100%;" tabindex="0"></canvas>
     </div>
   </div>
 
-  <!-- Schwab Modifier Cards -->
   <div class="metrics-grid" id="metrics-zone">
     <div class="metric-card" id="card-mismatch">
       <div class="metric-header">
@@ -645,9 +654,8 @@ button:hover {
     </div>
   </div>
 
-  <!-- Interactive Controls Deck -->
   <div class="control-deck">
-    
+
     <div class="auto-mode-toggle">
       <span style="font-size: 13px; font-weight: 600;">Mecanismo Compensatório da Pelve</span>
       <label class="lumi-checkbox-label">
@@ -685,6 +693,22 @@ button:hover {
 </div>
 
 <script>
+  (function liberarRolagem() {
+    const style = document.createElement('style');
+    style.textContent = `
+      html, body {
+        overflow: auto !important;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        height: auto !important;
+        min-height: 100% !important;
+        position: static !important;
+        touch-action: pan-x pan-y !important;
+      }
+    `;
+    document.head.appendChild(style);
+  })();
+
   const state = {
     pi: 55,
     ll: 55,
@@ -710,12 +734,10 @@ button:hover {
       const ptBasal = 0.26 * state.pi;
       const llLoss = Math.max(0, state.pi - state.ll);
       const ptMax = 38.0;
-      
-      // Retroversão pélvica compensatória aumenta o PT para manter C7 sobre o sacro
+
       state.pt = Math.min(ptMax, ptBasal + llLoss * 0.75);
       state.ss = state.pi - state.pt;
 
-      // SVA aumenta quando a perda de LL excede a capacidade de retroversão pélvica
       const compensatedByPT = (state.pt - ptBasal) * 1.15;
       const uncompensatedDeficit = Math.max(0, (state.pi - state.ll) - compensatedByPT);
       state.sva = Math.round(15 + uncompensatedDeficit * 3.8);
@@ -812,43 +834,32 @@ button:hover {
     const colorSurfaceDim = getCssVar('--surface-dim') || '#f2f0f0';
     const colorError = getCssVar('--error') || '#de2d29';
 
-    // ORIENTAÇÃO ANATÔMICA SAGITAL:
-    // Esquerda = POSTERIOR | Direita = ANTERIOR
-    // O eixo bicoxofemoral (cabeças femorais) fica ANTERIOR (à direita) ao centro do platô sacral (S1) quando PT > 0.
     const femoralX = w * 0.48;
     const femoralY = h - 60;
-    const pelvisR = 76; // Distância do centro da cabeça femoral ao centro do platô S1
+    const pelvisR = 76;
 
     const ptRad = (state.pt * Math.PI) / 180;
     const ssRad = (state.ss * Math.PI) / 180;
-    const llRad = (state.ll * Math.PI) / 180;
 
-    // Coordenadas do centro do platô S1:
-    // Como a cabeça femoral é ANTERIOR (+X) ao sacro quando PT > 0, S1 fica POSTERIOR (-X) à cabeça femoral.
     const s1X = femoralX - pelvisR * Math.sin(ptRad);
     const s1Y = femoralY - pelvisR * Math.cos(ptRad);
 
-    // Platô Sacral (S1):
-    // Inclina-se para baixo e para a frente (direita = anterior).
-    // Portanto, a borda ANTERIOR (direita) é mais baixa (+Y) e a borda POSTERIOR (esquerda) é mais alta (-Y).
     const s1Width = 40;
     const s1Half = s1Width / 2;
     const plateDx = s1Half * Math.cos(ssRad);
     const plateDy = s1Half * Math.sin(ssRad);
 
     const s1PostX = s1X - plateDx;
-    const s1PostY = s1Y - plateDy; // Canto póstero-superior de S1 (referência do SVA)
+    const s1PostY = s1Y - plateDy;
     const s1AntX = s1X + plateDx;
-    const s1AntY = s1Y + plateDy;  // Canto ântero-superior de S1
+    const s1AntY = s1Y + plateDy;
 
-    // --- MARCADORES DE ORIENTAÇÃO (POSTERIOR / ANTERIOR) ---
     ctx.font = "600 11px 'Google Sans Code', monospace";
     ctx.fillStyle = colorVariant;
     ctx.fillText("← POSTERIOR", 18, 24);
     const antLabel = "ANTERIOR →";
     ctx.fillText(antLabel, w - ctx.measureText(antLabel).width - 18, 24);
 
-    // --- LINHA DE SOLO / REFERÊNCIA BASE ---
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = colorVariant;
     ctx.setLineDash([4, 4]);
@@ -858,12 +869,10 @@ button:hover {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // --- DESENHO DO CONTORNO PÉLVICO E SACRO ---
     ctx.fillStyle = colorSurfaceDim;
     ctx.strokeStyle = colorOnSurface;
     ctx.lineWidth = 1.8;
 
-    // Contorno estilizado do sacro e pelve até o acetábulo (cabeça femoral)
     ctx.beginPath();
     ctx.moveTo(s1PostX, s1PostY);
     ctx.lineTo(s1AntX, s1AntY);
@@ -876,7 +885,6 @@ button:hover {
     ctx.globalAlpha = 1.0;
     ctx.stroke();
 
-    // --- DESENHO DO PLATÔ SACRAL (S1) ---
     ctx.lineWidth = 4.5;
     ctx.strokeStyle = colorSS;
     ctx.beginPath();
@@ -884,7 +892,6 @@ button:hover {
     ctx.lineTo(s1AntX, s1AntY);
     ctx.stroke();
 
-    // Linha horizontal de referência no centro de S1 para o ângulo SS
     ctx.lineWidth = 1.2;
     ctx.strokeStyle = colorSS;
     ctx.setLineDash([3, 3]);
@@ -894,9 +901,6 @@ button:hover {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // --- LINHA PERPENDICULAR AO PLATÔ S1 (PARA DEFINIÇÃO DO PI) ---
-    // O vetor do platô para a frente é (+cos(ss), +sin(ss)).
-    // A normal apontando para baixo e para trás é (-sin(ss), +cos(ss)).
     const perpLen = 58;
     const perpX = s1X - perpLen * Math.sin(ssRad);
     const perpY = s1Y + perpLen * Math.cos(ssRad);
@@ -910,7 +914,6 @@ button:hover {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // --- LINHA S1 AO EIXO BICOXOFEMORAL (CAB. FEMORAL) ---
     ctx.lineWidth = 2.2;
     ctx.strokeStyle = colorPT;
     ctx.beginPath();
@@ -918,7 +921,6 @@ button:hover {
     ctx.lineTo(femoralX, femoralY);
     ctx.stroke();
 
-    // --- LINHA VERTICAL DE REFERÊNCIA NO EIXO BICOXOFEMORAL (PARA PT) ---
     ctx.lineWidth = 1.2;
     ctx.strokeStyle = colorPT;
     ctx.setLineDash([3, 3]);
@@ -928,7 +930,6 @@ button:hover {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // --- CABEÇA FEMORAL (EIXO BICOXOFEMORAL) ---
     ctx.fillStyle = colorSurfaceDim;
     ctx.strokeStyle = colorOnSurface;
     ctx.lineWidth = 2.2;
@@ -946,14 +947,10 @@ button:hover {
     ctx.fillStyle = colorVariant;
     ctx.fillText("Eixo Bicoxofemoral", femoralX - 48, femoralY + 26);
 
-    // --- COLUNA VERTEBRAL (LORDOSE LOMBAR E CIFOSE TORÁCICA ATÉ C7) ---
-    // SVA é medido horizontalmente do canto póstero-superior do platô S1 (s1PostX) até a linha de prumo de C7.
-    const svaPxOffset = state.sva * 1.15; // Escala visual (mm -> px)
+    const svaPxOffset = state.sva * 1.15;
     const C7_X = s1PostX + svaPxOffset;
     const C7_Y = s1Y - 160;
 
-    // A coluna sai perpendicularmente ao platô S1 (para cima e para a frente: +sin(ss), -cos(ss))
-    // e curva-se para trás de acordo com a Lordose Lombar (LL)
     const lordosisDepth = (state.ll - 15) * 0.65;
     const ctrl1X = s1X + Math.sin(ssRad) * 45 - lordosisDepth * 0.35;
     const ctrl1Y = s1Y - Math.cos(ssRad) * 45;
@@ -969,7 +966,6 @@ button:hover {
     ctx.stroke();
     ctx.lineCap = 'butt';
 
-    // Corpo vertebral de C7
     ctx.fillStyle = colorOnSurface;
     ctx.beginPath();
     ctx.arc(C7_X, C7_Y, 6, 0, Math.PI * 2);
@@ -979,11 +975,9 @@ button:hover {
     ctx.fillStyle = colorOnSurface;
     ctx.fillText("C7", C7_X - 8, C7_Y - 10);
 
-    // --- LINHA DE PRUMO DE C7 E MEDIDA DO SVA (REFERÊNCIA: S1 PÓSTERO-SUPERIOR) ---
     const isSvaHigh = state.sva >= 40;
     const svaColor = isSvaHigh ? colorError : colorOnSurface;
 
-    // Linha de prumo descendo de C7
     ctx.lineWidth = 1.6;
     ctx.strokeStyle = svaColor;
     ctx.setLineDash([4, 4]);
@@ -992,7 +986,6 @@ button:hover {
     ctx.lineTo(C7_X, s1PostY + 25);
     ctx.stroke();
 
-    // Linha de referência vertical no canto póstero-superior de S1
     ctx.strokeStyle = colorVariant;
     ctx.beginPath();
     ctx.moveTo(s1PostX, s1PostY - 35);
@@ -1000,13 +993,11 @@ button:hover {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Ponto destacando o canto póstero-superior de S1
     ctx.fillStyle = colorSS;
     ctx.beginPath();
     ctx.arc(s1PostX, s1PostY, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Seta / Barra horizontal do SVA entre S1 póstero-superior e a linha de prumo de C7
     const svaMeasureY = s1PostY - 22;
     ctx.lineWidth = 2;
     ctx.strokeStyle = svaColor;
@@ -1015,7 +1006,6 @@ button:hover {
     ctx.lineTo(C7_X, svaMeasureY);
     ctx.stroke();
 
-    // Pequenas hastes nas extremidades da cota do SVA
     ctx.beginPath();
     ctx.moveTo(s1PostX, svaMeasureY - 4);
     ctx.lineTo(s1PostX, svaMeasureY + 4);
@@ -1028,8 +1018,6 @@ button:hover {
     const midSvaX = (s1PostX + C7_X) / 2;
     ctx.fillText(`SVA: ${state.sva}mm`, midSvaX - 28, svaMeasureY - 7);
 
-    // --- ARCOS DE ÂNGULOS (SS, PT, PI) ---
-    // 1. Arco SS (entre a horizontal 0 rad e o platô sacral +ssRad)
     ctx.lineWidth = 1.8;
     ctx.strokeStyle = colorSS;
     ctx.beginPath();
@@ -1039,7 +1027,6 @@ button:hover {
     ctx.fillStyle = colorSS;
     ctx.fillText(`SS ${Math.round(state.ss)}°`, s1X + 30, s1Y + 14);
 
-    // 2. Arco PT (no eixo bicoxofemoral, entre a vertical -PI/2 e a linha para S1: -PI/2 - ptRad)
     ctx.strokeStyle = colorPT;
     ctx.beginPath();
     const angleVertUp = -Math.PI / 2;
@@ -1049,9 +1036,6 @@ button:hover {
     ctx.fillStyle = colorPT;
     ctx.fillText(`PT ${Math.round(state.pt)}°`, femoralX - 28, femoralY - 44);
 
-    // 3. Arco PI (no centro de S1, entre a perpendicular ao platô e a linha S1-Fêmur)
-    // Ângulo da perpendicular para baixo/trás: PI/2 + ssRad
-    // Ângulo de S1 para a cabeça femoral: PI/2 - ptRad
     const angleS1ToFem = Math.PI / 2 - ptRad;
     const anglePerp = Math.PI / 2 + ssRad;
     ctx.strokeStyle = colorPI;
