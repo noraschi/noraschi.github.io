@@ -17,9 +17,20 @@
     --warning: #f59e0b;
     --danger: #ef4444;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body { background: var(--bg); color: var(--text); padding: 16px; line-height: 1.45; }
-  .container { max-width: 1180px; margin: 0 auto; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    line-height: 1.45;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100% !important;
+    position: static !important;
+    touch-action: pan-x pan-y !important;
+  }
+  .container { max-width: 1180px; margin: 0 auto; overflow: visible; }
   header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
   h1 { font-size: 1.25rem; font-weight: 700; }
   .subtitle { font-size: 0.82rem; color: var(--muted); }
@@ -136,26 +147,20 @@
           <text x="210" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#94a3b8">ANTERIOR (Abdome / Grandes Vasos)</text>
           <text x="210" y="262" text-anchor="middle" font-size="11" font-weight="bold" fill="#94a3b8">POSTERIOR (Canal / Elementos Posteriores)</text>
 
-          <!-- Corpo / Disco -->
           <ellipse cx="210" cy="138" rx="58" ry="38" fill="#334155" stroke="#94a3b8" stroke-width="2"/>
-          <!-- Cage representado dinamicamente dentro do disco -->
           <rect id="cageShape" x="172" y="114" width="76" height="48" rx="5" fill="#38bdf8" fill-opacity="0.32" stroke="#38bdf8" stroke-width="2.5"/>
           <text id="cageLbl" x="210" y="142" text-anchor="middle" font-size="10" font-weight="bold" fill="#f8fafc">Cage ALIF</text>
 
-          <!-- Canal / Saco Dural -->
           <circle cx="210" cy="190" r="15" fill="#ef4444" fill-opacity="0.22" stroke="#ef4444" stroke-width="1.8"/>
           <text x="210" y="218" text-anchor="middle" font-size="9" font-weight="bold" fill="#fca5a5">Saco Dural / Raízes</text>
 
-          <!-- Psoas -->
           <ellipse cx="130" cy="138" rx="24" ry="32" fill="#475569" fill-opacity="0.35" stroke="#64748b" stroke-width="1.5"/>
           <ellipse cx="290" cy="138" rx="24" ry="32" fill="#475569" fill-opacity="0.35" stroke="#64748b" stroke-width="1.5"/>
           <text x="290" y="182" text-anchor="middle" font-size="9" fill="#94a3b8">Psoas / Plexo</text>
 
-          <!-- Vasos -->
           <circle cx="182" cy="88" r="10" fill="#3b82f6" fill-opacity="0.45" stroke="#60a5fa" stroke-width="1.5"/>
           <circle cx="238" cy="88" r="10" fill="#ef4444" fill-opacity="0.45" stroke="#f87171" stroke-width="1.5"/>
 
-          <!-- Linha de Acesso -->
           <line id="accLine" x1="210" y1="30" x2="210" y2="112" stroke="#22c55e" stroke-width="5" stroke-linecap="round"/>
         </svg>
       </div>
@@ -165,6 +170,22 @@
 </div>
 
 <script>
+  (function liberarRolagem() {
+    const style = document.createElement('style');
+    style.textContent = `
+      html, body {
+        overflow: auto !important;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        height: auto !important;
+        min-height: 100% !important;
+        position: static !important;
+        touch-action: pan-x pan-y !important;
+      }
+    `;
+    document.head.appendChild(style);
+  })();
+
   let st = { lvl: 'L5-S1', iliac: 1 };
 
   function setLvl(v) {
