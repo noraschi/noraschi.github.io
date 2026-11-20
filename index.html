@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noraschi - Meus Projetos</title>
+<style>
+  body{margin:0;padding:12px;background:#008080;font:16px "Times New Roman",serif;color:#000;
+    background-image:radial-gradient(#006a6a 1px,transparent 1px);background-size:8px 8px}
+  .janela{max-width:720px;margin:0 auto;background:#c0c0c0;border:2px solid;
+    border-color:#fff #404040 #404040 #fff;box-shadow:2px 2px 0 #000;padding:3px}
+  .barra{background:linear-gradient(90deg,#000080,#1084d0);color:#fff;font:bold 14px Arial,sans-serif;
+    padding:3px 6px;display:flex;justify-content:space-between}
+  .conteudo{padding:12px}
+  h1{font:bold 44px "Courier New",monospace;margin:6px 0;text-align:center;color:#800080;
+    text-shadow:3px 3px 0 #ff0;letter-spacing:2px}
+  .sub{text-align:center;font:italic 15px "Comic Sans MS","Comic Sans",cursive;margin:0 0 10px}
+  marquee{background:#000;color:#0f0;font:14px "Courier New",monospace;padding:3px;border:2px inset #888}
+  hr{border:0;height:4px;background:repeating-linear-gradient(90deg,#f0f 0 8px,#0ff 8px 16px,#ff0 16px 24px);margin:14px 0}
+  h2{font:bold 20px Arial,sans-serif;margin:0 0 8px}
+  .lista{background:#fff;border:2px inset #808080;padding:6px;min-height:80px}
+  .lista a{display:flex;gap:10px;align-items:baseline;padding:6px 8px;color:#0000ee;font-size:18px}
+  .lista a:visited{color:#551a8b}
+  .lista a:hover,.lista a:focus{background:#000080;color:#ff0;outline:1px dotted #ff0}
+  .lista small{color:#555;font:13px "Courier New",monospace;margin-left:auto}
+  .lista a:hover small,.lista a:focus small{color:#fff}
+  .pisca{animation:p 1s steps(2,start) infinite;color:#f00;font-weight:bold}
+  @keyframes p{to{visibility:hidden}}
+  .rodape{text-align:center;font-size:13px}
+  .selo{display:inline-block;border:2px outset #fff;background:#c0c0c0;font:11px Arial,sans-serif;padding:2px 6px;margin:2px}
+  @media (prefers-reduced-motion:reduce){.pisca{animation:none}}
+  @media (max-width:520px){h1{font-size:30px}.lista small{display:none}}
+</style>
+</head>
+<body>
+<div class="janela">
+  <div class="barra"><span>Noraschi - Microsoft Internet Explorer</span><span>_ □ X</span></div>
+  <div class="conteudo">
+
+    <marquee scrollamount="4">*** Bem-vindo ao site do Noraschi *** simuladores novos de vez em quando *** clique num projeto para abrir ***</marquee>
+
+    <h1>NORASCHI</h1>
+    <p class="sub">Meus simuladores e experimentos</p>
+    <p style="text-align:center"><span class="pisca">NOVO!</span> Sempre atualizando a pasta /projetos</p>
+
+    <hr>
+
+    <h2>Projetos</h2>
+    <div class="lista" id="lista"></div>
+
+    <hr>
+
+    <div class="rodape">
+      <p>
+        <span class="selo">Melhor visto em 800x600</span>
+        <span class="selo">Em construção</span>
+      </p>
+      <p>&copy; Noraschi</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* =====================================================
+     ADICIONE SEUS PROJETOS AQUI.
+     Cada linha é um projeto:
+       nome:  o texto que aparece na tela inicial
+       link:  o caminho do arquivo dentro da pasta projetos
+       nota:  uma descrição curta (opcional)
+     ===================================================== */
+  const projetos = [
+    { nome: "Simulador de Exemplo", link: "projetos/exemplo.html", nota: "teste" },
+    // { nome: "Simulador de Pêndulo", link: "projetos/pendulo.html", nota: "física" },
+    // { nome: "Simulador de Juros",   link: "projetos/juros.html",   nota: "finanças" },
+  ];
+
+  const lista = document.getElementById("lista");
+  if (!projetos.length) {
+    lista.textContent = "Nenhum projeto ainda. Edite o index.html para adicionar.";
+  }
+  projetos.forEach(p => {
+    const a = document.createElement("a");
+    a.href = p.link;
+    a.innerHTML = "<span>📁</span><span></span><small></small>";
+    a.children[1].textContent = p.nome;
+    a.children[2].textContent = p.nota || "";
+    lista.appendChild(a);
+  });
+
+</script>
+</body>
+</html>
