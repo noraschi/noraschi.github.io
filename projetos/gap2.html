@@ -18,9 +18,20 @@
     --rose: #ef4444;
     --violet: #a78bfa;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body { background: var(--bg); color: var(--text); padding: 16px; line-height: 1.45; }
-  .app { max-width: 1240px; margin: 0 auto; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    line-height: 1.45;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100% !important;
+    position: static !important;
+    touch-action: pan-x pan-y !important;
+  }
+  .app { max-width: 1240px; margin: 0 auto; overflow: visible; }
 
   header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
   h1 { font-size: 1.25rem; font-weight: 700; }
@@ -97,7 +108,6 @@
   </div>
 
   <div class="main-grid">
-    <!-- Coluna Esquerda: Controles -->
     <div class="card">
       <div class="card-h"><span>Parâmetros Espinopélvicos e Idade</span></div>
 
@@ -134,7 +144,6 @@
       <div class="advice-box" id="adviceBox"></div>
     </div>
 
-    <!-- Coluna Direita: Visualizador Sagital Vetorial -->
     <div class="card">
       <div class="card-h"><span>Modelo Biomecânico Sagital (Tempo Real)</span><span id="pjkAlert" style="font-size:0.75rem; color:var(--amber);"></span></div>
       <div class="svg-wrap">
@@ -143,38 +152,29 @@
           <text x="26" y="26" font-size="10" fill="#64748b" font-weight="bold">← POSTERIOR</text>
           <text x="434" y="26" text-anchor="end" font-size="10" fill="#64748b" font-weight="bold">ANTERIOR →</text>
 
-          <!-- Vertical pelo eixo bicoxofemoral -->
           <line id="hipPlumb" x1="300" y1="36" x2="300" y2="372" stroke="#334155" stroke-width="1.5" stroke-dasharray="5,4"/>
           <text id="plumbLbl" x="306" y="386" font-size="9.5" fill="#64748b">Vertical do Eixo Femoral</text>
 
-          <!-- Horizontal por S1 -->
           <line id="s1Horiz" x1="150" y1="288" x2="350" y2="288" stroke="#475569" stroke-width="1" stroke-dasharray="3,3"/>
 
-          <!-- Contorno pélvico esquemático -->
           <path id="pelvisContour" d="" fill="none" stroke="#64748b" stroke-width="2"/>
 
-          <!-- Linha GSA (eixo femoral → C2) -->
           <line id="gsaLine" x1="300" y1="336" x2="300" y2="60" stroke="#a78bfa" stroke-width="1.2" stroke-dasharray="2,4" opacity="0.7"/>
 
-          <!-- Eixo bicoxofemoral (anterior e inferior a S1) -->
           <circle id="hipOuter" cx="300" cy="336" r="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
           <circle id="hipInner" cx="300" cy="336" r="4" fill="#38bdf8"/>
           <text id="hipLbl" x="300" y="362" text-anchor="middle" font-size="10" font-weight="bold" fill="#38bdf8">Eixo Bicoxofemoral</text>
 
-          <!-- Linha PT (centro de S1 → eixo bicoxofemoral) -->
           <line id="ptLine" x1="270" y1="288" x2="300" y2="336" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,2"/>
 
-          <!-- Platô sacral: ântero-inferior (direita/baixo) → póstero-superior (esquerda/cima) -->
           <line id="s1Plate" x1="240" y1="270" x2="300" y2="306" stroke="#f59e0b" stroke-width="6" stroke-linecap="round"/>
           <text id="s1Lbl" x="232" y="264" text-anchor="end" font-size="11" font-weight="bold" fill="#f59e0b">S1</text>
 
-          <!-- Curvas: lordose L4–S1 e L1–L4 (ápice anterior), cifose torácica (ápice posterior), lordose cervical (ápice anterior) -->
           <path id="pathL4S1" d="" fill="none" stroke="#10b981" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
           <path id="pathL1L4" d="" fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
           <path id="pathThoracic" d="" fill="none" stroke="#a78bfa" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
           <path id="pathCervical" d="" fill="none" stroke="#f8fafc" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 
-          <!-- Marcadores -->
           <circle id="ptL4" cx="0" cy="0" r="4.5" fill="#10b981"/>
           <text id="lblL4" x="0" y="0" font-size="10" font-weight="bold" fill="#10b981">L4</text>
 
@@ -192,7 +192,6 @@
 
           <text id="tkInfo" x="26" y="380" font-size="10" fill="#a78bfa"></text>
 
-          <!-- Indicador PJK -->
           <circle id="pjkRing" cx="0" cy="0" r="13" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="3,2" opacity="0"/>
           <text id="pjkText" x="155" y="48" font-size="10" font-weight="bold" fill="#ef4444" opacity="0">⚠ Estresse PJK</text>
         </svg>
@@ -207,13 +206,11 @@
     </div>
   </div>
 
-  <!-- Pontuação por Domínio -->
   <div class="card" style="margin-bottom:16px;">
     <div class="card-h"><span>Pontuação por Domínio do GAP Score (Máximo 13 pontos)</span></div>
     <div class="domains-grid" id="domainsGrid"></div>
   </div>
 
-  <!-- Tabela Comparativa Medido vs Alvo Ideal -->
   <div class="card">
     <div class="card-h"><span>Comparação com os Alvos Ideais Derivados da PI Individual</span></div>
     <table>
@@ -232,6 +229,22 @@
 </div>
 
 <script>
+  (function liberarRolagem() {
+    const style = document.createElement('style');
+    style.textContent = `
+      html, body {
+        overflow: auto !important;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        height: auto !important;
+        min-height: 100% !important;
+        position: static !important;
+        touch-action: pan-x pan-y !important;
+      }
+    `;
+    document.head.appendChild(style);
+  })();
+
   function setPreset(p) {
     const sPI = document.getElementById('sPI');
     const sSS = document.getElementById('sSS');
@@ -252,10 +265,6 @@
     calc();
   }
 
-  /* ===== Geometria sagital (anterior = +x / direita; posterior = −x / esquerda) =====
-     Ângulo da tangente medido a partir da vertical (+ = inclinado para anterior).
-     Subindo pela coluna: lordose = tangente gira para posterior (Δ<0), ápice anterior;
-     cifose = tangente gira para anterior (Δ>0), ápice posterior. */
   const DEG = Math.PI / 180;
   function seg(x, y, th, delta, len, n = 30) {
     const pts = [[x, y]];
@@ -272,13 +281,13 @@
   const pathD = a => 'M ' + a.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L ');
 
   function buildSpine(s1x, s1y, SS, LL, L4S1, TK, CL) {
-    const lumLow = seg(s1x, s1y, SS * DEG, -L4S1 * DEG, 32);                 // S1 → L4
+    const lumLow = seg(s1x, s1y, SS * DEG, -L4S1 * DEG, 32);
     const e1 = lumLow.pts[lumLow.pts.length - 1];
-    const lumUp = seg(e1[0], e1[1], lumLow.th, -(LL - L4S1) * DEG, 48);      // L4 → L1
+    const lumUp = seg(e1[0], e1[1], lumLow.th, -(LL - L4S1) * DEG, 48);
     const e2 = lumUp.pts[lumUp.pts.length - 1];
-    const tor = seg(e2[0], e2[1], lumUp.th, TK * DEG, 110);                  // L1 → T1 (cifose)
+    const tor = seg(e2[0], e2[1], lumUp.th, TK * DEG, 110);
     const e3 = tor.pts[tor.pts.length - 1];
-    const cer = seg(e3[0], e3[1], tor.th, -CL * DEG, 50);                    // T1 → C2 (lordose cervical)
+    const cer = seg(e3[0], e3[1], tor.th, -CL * DEG, 50);
     return { lumLow, lumUp, tor, cer };
   }
 
@@ -307,7 +316,6 @@
     const LDI = Math.abs(LL) > 0.5 ? (L4S1 / LL) * 100 : 0;
     const RSA = GSA - gsaIdeal;
 
-    // Pontuação Yilgor et al. (JBJS 2017)
     let ptsRPV = 0;
     if (RPV < -15) ptsRPV = 3;
     else if (RPV < -7) ptsRPV = 2;
@@ -366,7 +374,6 @@
     title.textContent = `GAP Score: ${total} / 13 pontos — Taxa Histórica de Complicações Mecânicas: ${riskTxt}`;
     desc.textContent = `Alvos para PI ${PI}°: SS ideal ${ssIdeal.toFixed(1)}° | LL ideal ${llIdeal.toFixed(1)}° | GSA ideal ${gsaIdeal.toFixed(1)}° | LDI ideal 50–80%.`;
 
-    // Cards por domínio
     const doms = [
       { name: 'RPV (Versão Pélvica)', pts: ptsRPV, sub: `ΔSS: ${RPV >= 0 ? '+' : ''}${RPV.toFixed(1)}°` },
       { name: 'RLL (Lordose Relativa)', pts: ptsRLL, sub: `ΔLL: ${RLL >= 0 ? '+' : ''}${RLL.toFixed(1)}°` },
@@ -382,7 +389,6 @@
       </div>
     `).join('');
 
-    // Tabela comparativa
     const rows = [
       {
         p: 'Declive Sagrado (SS)',
@@ -423,7 +429,6 @@
       </tr>
     `).join('');
 
-    // Orientação Cirúrgica
     let adv = '<strong>Planejamento Proporcionado:</strong> Os parâmetros guardam boa proporcionalidade com a PI individual do paciente.';
     if (LDI < 50) {
       adv = '<strong>Alerta de LDI Baixo (< 50%):</strong> A lordose está concentrada acima de L4. Em cirurgias distais, priorizar lordose em L4–S1 (ex: cages hiperlordóticos em L5–S1/L4–L5 ou osteotomia adequada) ajuda a equilibrar a distribuição.';
@@ -436,17 +441,12 @@
     }
     document.getElementById('adviceBox').innerHTML = adv;
 
-    /* ================= GRÁFICO SAGITAL (corrigido) =================
-       Anterior = direita. Cabeça femoral anterior e inferior a S1.
-       Platô sacral: ântero-inferior → póstero-superior. */
     const hipX = 300, hipY = 336, Ls = 50;
     const set = (id, o) => { const el = document.getElementById(id); for (const k in o) el.setAttribute(k, typeof o[k] === 'number' ? o[k].toFixed(1) : o[k]); };
 
-    // Centro de S1: posterior e superior ao eixo femoral (PT = ângulo vertical → linha eixo–S1)
     const s1x = hipX - Math.sin(PT * DEG) * Ls;
     const s1y = hipY - Math.cos(PT * DEG) * Ls;
 
-    // Platô: lado anterior mais baixo, lado posterior mais alto (inclinação = SS)
     const ssRad = SS * DEG, half = 30;
     const postX = s1x - Math.cos(ssRad) * half, postY = s1y - Math.sin(ssRad) * half;
     const antX = s1x + Math.cos(ssRad) * half, antY = s1y + Math.sin(ssRad) * half;
@@ -460,7 +460,6 @@
     set('hipLbl', { x: hipX, y: hipY + 28 });
     set('pelvisContour', { d: `M ${postX.toFixed(1)} ${postY.toFixed(1)} C ${(postX - 22).toFixed(1)} ${(postY + 50).toFixed(1)} ${(hipX - 52).toFixed(1)} ${(hipY + 8).toFixed(1)} ${(hipX - 14).toFixed(1)} ${(hipY + 8).toFixed(1)}` });
 
-    // Alvo do GSA: linha eixo femoral → C2 faz (GSA − PT) com a vertical (+ = anterior)
     const alpha = (GSA - PT) * DEG;
     const CL = 20;
     const err = TK => {
