@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<script id="lumi-getcssvar">
+window.getCssVar = window.getCssVar || function(name) {
+  try {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  } catch (e) { return ''; }
+};
+</script>
+
+<script id="lumi-canvas-guard">
+(function() {
+  if (window.__lumiCanvasGuard) return;
+  window.__lumiCanvasGuard = true;
+  var MAX_PX = 4096, MIN_FONT_PX = 12;
+  try {
+    var CP = HTMLCanvasElement.prototype;
+    var BOX = {width: 'clientWidth', height: 'clientHeight'}, D = {};
+    Object.keys(BOX).forEach(function(p) {
+      D[p] = Object.getOwnPropertyDescriptor(CP, p);
+    });
+    var tracking = function(el, p) {
+      var box = el[BOX[p]];
+      return !el.style[p] && box > 0 && box === D[p].get.call(el) &&
+          box === el['__lumiLast' + p];
+    };
+    var MAX = {width: 'maxWidth', height: 'maxHeight'};
+    var PAD = {width: ['paddingLeft', 'paddingRight'],
+               height: ['paddingTop', 'paddingBottom']};
+    var avail = function(el, p) {
+      var pe = el.parentElement;
+      if (!pe) return 0;
+      var cs = getComputedStyle(pe);
+      return pe[BOX[p]] - parseFloat(cs[PAD[p][0]]) -
+          parseFloat(cs[PAD[p][1]]);
+    };
+    Object.keys(BOX).forEach(function(p) {
+      var d = D[p];
+      if (!d || !d.set || !d.get) return;
+      Object.defineProperty(CP, p, {
+        configurable: true, enumerable: d.enumerable, get: d.get,
+        set: function(v) {
+          var n = +v, box = this[BOX[p]];
+          if (n > MAX_PX) n = MAX_PX;
+          if (n > box && tracking(this, p)) {
+            var el = this, pins = {};
+            Object.keys(BOX).forEach(function(q) {
+              if (tracking(el, q)) pins[q] = avail(el, q) ||
+                  el['__lumiBox' + q];
+            });
+            Object.keys(pins).forEach(function(q) {
+              el.style[q] = '100%';
+              el.style[MAX[q]] = pins[q] + 'px';
+            });
+            n = box;
+          }
+          this['__lumiBox' + p] = box;
+          this['__lumiLast' + p] = n;
+          d.set.call(this, isNaN(n) ? v : n);
+        }
+      });
+    });
+  } catch (e) {}
+  try {
+    var XP = CanvasRenderingContext2D.prototype;
+    var px = /(\d*\.?\d+)px/;
+    var floorFont = function(ctx) {
+      var f = ctx.font, m = px.exec(f);
+      if (m && +m[1] >= 4 && +m[1] < MIN_FONT_PX) ctx.font = f.replace(px, MIN_FONT_PX + 'px');
+    };
+    ['fillText', 'strokeText', 'measureText'].forEach(function(k) {
+      var o = XP[k];
+      if (typeof o !== 'function') return;
+      XP[k] = function() { floorFont(this); return o.apply(this, arguments); };
+    });
+  } catch (e) {}
+})();
+</script>
+
+<style id="lumi-runtime">
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:ital,wght@0,300..700;1,300..700&family=Google+Sans+Code:ital,wght,MONO@0,300..700,0..1;1,300..700,0..1&display=swap');
+
+:root {
+  --body-bg: transparent;
+  --ff-sans: 'Google Sans Flex', 'Google Sans Text', 'Google Sans', sans-serif;
+  --ff-mono: 'Google Sans Code', 'Google Sans Mono', monospace;
+
+  --lumi-sys-spacing--xxs: 2px;
+  --lumi-sys-spacing--xs: 4px;
+  --lumi-sys-spacing--s: 8px;
+  --lumi-sys-spacing--m: 12px;
+  --lumi-sys-spacing--l: 16px;
+  --lumi-sys-spacing--xl: 20px;
+  --lumi-sys-spacing--xxl: 24px;
+  --lumi-sys-spacing--3xl: 28px;
+  --lumi-sys-spacing--4xl: 36px;
+
+  --lumi-sys-shape--none: 0px;
+  --lumi-sys-shape--extra-small: 4px;
+  --lumi-sys-shape--small: 8px;
+  --lumi-sys-shape--medium: 12px;
+  --lumi-sys-shape--large: 16px;
+  --lumi-sys-shape--large-increased: 20px;
+  --lumi-sys-shape--large-max: 24px;
+  --lumi-sys-shape--xl: 28px;
+  --lumi-sys-shape--xl-increased: 32px;
+  --lumi-sys-shape--xl-max: 40px;
+  --lumi-sys-shape--xxl: 48px;
+  --lumi-sys-shape--xxl-increased: 56px;
+  --lumi-sys-shape--full: 999px;
+
+  --lumi-sys-elevation--level1: 0 0 20px 0 rgba(0, 0, 0, 0.04);
+  --lumi-sys-elevation--level2: 0 0 20px 0 rgba(0, 0, 0, 0.11);
+
+  --lumi-sys-color--surface: #fdfcfc;
+  --lumi-sys-color--surface-dim: #f2f0f0;
+  --lumi-sys-color--surface-bright: #ffffff;
+  --lumi-sys-color--surface-background: #fdfcfc;
+  --lumi-sys-color--surface-accent: #9dd2ff;
+  --lumi-sys-color--surface-container: #f2f0f0;
+  --lumi-sys-color--surface-container-high: #e6e6e6;
+  --lumi-sys-color--surface-translucent: rgba(255, 255, 255, 0.88);
+  --lumi-sys-color--on-surface: #000000;
+  --lumi-sys-color--on-surface-default: #000000;
+  --lumi-sys-color--on-surface-variant: rgba(0, 0, 0, 0.55);
+  --lumi-sys-color--on-surface-de-emphasis: rgba(0, 0, 0, 0.55);
+  --lumi-sys-color--on-surface-low: rgba(0, 0, 0, 0.08);
+  --lumi-sys-color--positive: #008052;
+  --lumi-sys-color--positive-container: #daf9d4;
+  --lumi-sys-color--on-positive-container: #009954;
+  --lumi-sys-color--error: #de2d29;
+  --lumi-sys-color--error-container: #ffdeec;
+  --lumi-sys-color--on-error-container: #de2d29;
+  --lumi-sys-color--accent: #9dd2ff;
+  --lumi-sys-color--accent-container: #dcf1ff;
+  --lumi-sys-color--accent-fixed: #3186ff;
+  --lumi-sys-color--primary: #3186ff;
+  --lumi-sys-color--on-primary: #ffffff;
+  --lumi-sys-color--black: #000000;
+  --lumi-sys-color--white: #ffffff;
+  --lumi-sys-color--outline: #727676;
+  --lumi-sys-color--stroke-default: #e3e3e3;
+
+  --lumi-sys-opacity-state--hover: 0.08;
+  --lumi-sys-opacity-state--focus: 0.08;
+  --lumi-sys-opacity-state--pressed: 0.12;
+  --lumi-sys-opacity-state--disabled: 0.12;
+  --lumi-sys-opacity-state--disabled-label: 0.38;
+
+  --lumi-sys-color--chart-series-1: #2575fc;
+  --lumi-sys-color--chart-series-2: #5b6e9e;
+  --lumi-sys-color--chart-series-3: #228a49;
+  --lumi-sys-color--chart-series-4: #62991b;
+  --lumi-sys-color--chart-series-5: #1e564d;
+  --lumi-sys-color--chart-series-6: #526a45;
+  --lumi-sys-color--chart-series-7: #2780c4;
+  --lumi-sys-color--chart-series-8: #997112;
+  --lumi-sys-color--chart-series-9: #705ec2;
+  --lumi-sys-color--chart-series-10: #c84288;
+}
+
+:root[data-theme="dark"],
+body.dark-mode,
+:root[data-theme="dark"] body {
+  --body-bg: #0f0f0f;
+  --lumi-sys-elevation--level1: 0 0 20px 0 rgba(0, 0, 0, 0.28);
+  --lumi-sys-elevation--level2: 0 0 20px 0 rgba(0, 0, 0, 0.40);
+
+  --lumi-sys-color--surface: #0f0f0f;
+  --lumi-sys-color--surface-dim: #141414;
+  --lumi-sys-color--surface-bright: #1c1c1c;
+  --lumi-sys-color--surface-background: #0f0f0f;
+  --lumi-sys-color--surface-accent: #14204f;
+  --lumi-sys-color--surface-container: #141414;
+  --lumi-sys-color--surface-container-high: #1c1c1c;
+  --lumi-sys-color--surface-translucent: rgba(24, 24, 27, 0.88);
+  --lumi-sys-color--on-surface: #e0e0e0;
+  --lumi-sys-color--on-surface-default: #e0e0e0;
+  --lumi-sys-color--on-surface-variant: rgba(255, 255, 255, 0.55);
+  --lumi-sys-color--on-surface-de-emphasis: rgba(255, 255, 255, 0.55);
+  --lumi-sys-color--on-surface-low: rgba(255, 255, 255, 0.12);
+  --lumi-sys-color--positive: #0ebc5f;
+  --lumi-sys-color--positive-container: #002220;
+  --lumi-sys-color--on-positive-container: #0ebc5f;
+  --lumi-sys-color--error: #ff4c45;
+  --lumi-sys-color--error-container: #3c0202;
+  --lumi-sys-color--on-error-container: #ff4c45;
+  --lumi-sys-color--accent: #1f3b9b;
+  --lumi-sys-color--accent-container: #192967;
+  --lumi-sys-color--accent-fixed: #3186ff;
+  --lumi-sys-color--primary: #9dd2ff;
+  --lumi-sys-color--on-primary: #192967;
+  --lumi-sys-color--black: #000000;
+  --lumi-sys-color--white: #ffffff;
+  --lumi-sys-color--outline: #9a9b9c;
+  --lumi-sys-color--stroke-default: #2d2f38;
+
+  --lumi-sys-color--chart-series-1: #9dd2ff;
+  --lumi-sys-color--chart-series-2: #96a7d6;
+  --lumi-sys-color--chart-series-3: #50e389;
+  --lumi-sys-color--chart-series-4: #c8f585;
+  --lumi-sys-color--chart-series-5: #f5f2e6;
+  --lumi-sys-color--chart-series-6: #dcd8c0;
+  --lumi-sys-color--chart-series-7: #82c7ff;
+  --lumi-sys-color--chart-series-8: #f5d77f;
+  --lumi-sys-color--chart-series-9: #d9ceff;
+  --lumi-sys-color--chart-series-10: #ffa6d7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --body-bg: #0f0f0f;
+    --lumi-sys-color--surface: #0f0f0f;
+    --lumi-sys-color--surface-dim: #141414;
+    --lumi-sys-color--surface-bright: #1c1c1c;
+    --lumi-sys-color--surface-container: #141414;
+    --lumi-sys-color--surface-container-high: #1c1c1c;
+    --lumi-sys-color--on-surface: #e0e0e0;
+    --lumi-sys-color--on-surface-default: #e0e0e0;
+    --lumi-sys-color--on-surface-variant: rgba(255, 255, 255, 0.55);
+    --lumi-sys-color--on-surface-low: rgba(255, 255, 255, 0.12);
+    --lumi-sys-color--positive: #0ebc5f;
+    --lumi-sys-color--positive-container: #002220;
+    --lumi-sys-color--error: #ff4c45;
+    --lumi-sys-color--error-container: #3c0202;
+    --lumi-sys-color--accent: #1f3b9b;
+    --lumi-sys-color--accent-container: #192967;
+    --lumi-sys-color--accent-fixed: #3186ff;
+    --lumi-sys-color--primary: #9dd2ff;
+    --lumi-sys-color--stroke-default: #2d2f38;
+    --lumi-sys-color--chart-series-1: #9dd2ff;
+    --lumi-sys-color--chart-series-3: #50e389;
+    --lumi-sys-color--chart-series-10: #ffa6d7;
+  }
+}
+
+:root {
+  --surface: var(--lumi-sys-color--surface, #fdfcfc);
+  --surface-dim: var(--lumi-sys-color--surface-dim, #f2f0f0);
+  --surface-bright: var(--lumi-sys-color--surface-bright, #ffffff);
+  --surface-container: var(--lumi-sys-color--surface-container, #f2f0f0);
+  --surface-container-high: var(--lumi-sys-color--surface-container-high, #e6e6e6);
+  --on-surface: var(--lumi-sys-color--on-surface, #000000);
+  --on-surface-variant: var(--lumi-sys-color--on-surface-variant, rgba(0, 0, 0, 0.55));
+  --on-surface-low: var(--lumi-sys-color--on-surface-low, rgba(0, 0, 0, 0.08));
+  --primary: var(--lumi-sys-color--primary, #3186ff);
+  --accent: var(--lumi-sys-color--accent, #9dd2ff);
+  --accent-container: var(--lumi-sys-color--accent-container, #dcf1ff);
+  --accent-fixed: var(--lumi-sys-color--accent-fixed, #3186ff);
+  --positive: var(--lumi-sys-color--positive, #008052);
+  --positive-container: var(--lumi-sys-color--positive-container, #daf9d4);
+  --error: var(--lumi-sys-color--error, #de2d29);
+  --error-container: var(--lumi-sys-color--error-container, #ffdeec);
+  --stroke-default: var(--lumi-sys-color--stroke-default, #e3e3e3);
+  --chart-1: var(--lumi-sys-color--chart-series-1, #2575fc);
+  --chart-3: var(--lumi-sys-color--chart-series-3, #228a49);
+  --chart-10: var(--lumi-sys-color--chart-series-10, #c84288);
+  --r-m: var(--lumi-sys-shape--medium, 12px);
+  --r-full: var(--lumi-sys-shape--full, 999px);
+}
+
+html, body {
+  background: var(--body-bg, transparent) !important;
+  color: var(--on-surface) !important;
+  overflow-y: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.widget-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-inline: 0 !important;
+  box-sizing: border-box;
+}
+
+button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 16px;
+  font-family: var(--ff-sans, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface);
+  background-color: var(--surface-bright);
+  border: 1px solid var(--stroke-default);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+button:hover {
+  background-color: var(--surface-container-high);
+}
+.lumi-btn.is-selected {
+  background-color: var(--accent-container);
+  color: var(--on-surface);
+  border-color: transparent;
+}
+
+.lumi-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--ff-sans, sans-serif);
+  font-size: 13px;
+  color: var(--on-surface);
+  user-select: none;
+}
+
+.lumi-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+.lumi-slider {
+  appearance: none;
+  width: calc(100% + 28px);
+  margin-left: -14px;
+  margin-right: -14px;
+  height: 40px;
+  background: transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.lumi-slider:focus { outline: none; }
+.lumi-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  --thumb-center: calc(14px + (100% - 28px) * (var(--progress, 50%) / 100%));
+  --active-end: calc(var(--thumb-center) - 8px + (var(--progress, 50%) / 100%) * 6px);
+  background-image: radial-gradient(circle at calc(100% - 18px) center, var(--on-surface-variant) 2px, transparent 2.5px),
+    linear-gradient(to right, transparent 0, transparent 14px, var(--on-surface) 14px, var(--on-surface) var(--active-end), transparent var(--active-end), transparent calc(var(--thumb-center) + 8px), var(--stroke-default) calc(var(--thumb-center) + 8px), var(--stroke-default) calc(100% - 16px), transparent calc(100% - 16px), transparent 100%);
+  border-radius: 999px;
+}
+.lumi-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect x='14' y='6' width='4' height='20' rx='2' fill='%233186ff'/%3E%3C/svg%3E");
+  background-size: 32px 32px;
+  background-repeat: no-repeat;
+  background-position: center center;
+  margin-top: -14px;
+  cursor: pointer;
+}
+.lumi-slider:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.lumi-slider-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 36px;
+  padding: 0 12px;
+  background-color: var(--surface-bright);
+  border: 1px solid var(--stroke-default);
+  border-radius: 12px;
+  font-family: var(--ff-mono, monospace);
+  font-size: 14px;
+  color: var(--on-surface);
+  flex-shrink: 0;
+}
+</style>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador Biomecânico Espinopélvico</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow-y: hidden;
+      font-family: var(--ff-sans, system-ui, -apple-system, sans-serif);
+      color: var(--on-surface, #000000);
+      background: transparent;
+    }
+
+    .widget-container {
+      width: 100%;
+      min-height: 280px;
+      padding: var(--lumi-sys-spacing--m, 12px);
+      display: flex;
+      flex-direction: column;
+      gap: var(--lumi-sys-spacing--m, 12px);
+      box-sizing: border-box;
+    }
+
+    .header-card {
+      background: var(--surface-bright, #ffffff);
+      border-radius: var(--lumi-sys-shape--medium, 12px);
+      padding: var(--lumi-sys-spacing--m, 12px) var(--lumi-sys-spacing--l, 16px);
+      border: 1px solid var(--stroke-default, #e3e3e3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--lumi-sys-spacing--xs, 8px);
+    }
+
+    .header-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--lumi-sys-spacing--s, 8px);
+    }
+
+    .equation-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--lumi-sys-spacing--s, 8px);
+      background: var(--surface-dim, #f2f0f0);
+      padding: 8px 12px;
+      border-radius: var(--r-m, 12px);
+      font-family: var(--ff-mono, monospace);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--on-surface, #000000);
+      text-align: center;
+    }
+
+    .eq-val {
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--surface-bright, #ffffff);
+      border: 1px solid var(--stroke-default, #e3e3e3);
+    }
+
+    .eq-val.pi { color: var(--chart-1, #2575fc); border-color: var(--chart-1, #2575fc); }
+    .eq-val.pt { color: var(--chart-10, #c84288); border-color: var(--chart-10, #c84288); }
+    .eq-val.ss { color: var(--chart-3, #228a49); border-color: var(--chart-3, #228a49); }
+
+    .widget-viewport {
+      position: relative;
+      width: 100%;
+      height: 350px;
+      overflow: hidden;
+      border-radius: var(--lumi-sys-shape--medium, 12px);
+      background: var(--surface-bright, #ffffff);
+      border: 1px solid var(--stroke-default, #e3e3e3);
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--lumi-sys-spacing--s, 8px);
+    }
+
+    .metric-card {
+      background: var(--surface-bright, #ffffff);
+      border-radius: var(--lumi-sys-shape--medium, 12px);
+      padding: 10px 12px;
+      border: 1px solid var(--stroke-default, #e3e3e3);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .metric-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .metric-title {
+      font-size: 12px;
+      color: var(--on-surface-variant, rgba(0,0,0,0.6));
+      font-weight: 500;
+    }
+
+    .schwab-badge {
+      font-family: var(--ff-mono, monospace);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: var(--r-full, 999px);
+      line-height: 1;
+    }
+
+    .badge-0 {
+      background: var(--positive-container, #daf9d4);
+      color: var(--positive, #008052);
+    }
+
+    .badge-plus {
+      background: #fff3c4;
+      color: #8c6200;
+    }
+
+    .badge-plus-plus {
+      background: var(--error-container, #ffdeec);
+      color: var(--error, #de2d29);
+    }
+
+    .metric-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .metric-num {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--on-surface, #000);
+      font-family: var(--ff-mono, monospace);
+    }
+
+    .metric-unit {
+      font-size: 12px;
+      color: var(--on-surface-variant, rgba(0,0,0,0.55));
+    }
+
+    .scenario-deck {
+      display: flex;
+      gap: var(--lumi-sys-spacing--xs, 6px);
+      flex-wrap: wrap;
+    }
+
+    .scenario-btn {
+      flex: 1;
+      min-width: 130px;
+      font-size: 12px;
+      padding: 6px 10px;
+    }
+
+    .control-deck {
+      display: flex;
+      flex-direction: column;
+      gap: var(--lumi-sys-spacing--s, 10px);
+      padding: var(--lumi-sys-spacing--m, 12px);
+      background: var(--surface-dim, #f2f0f0);
+      border-radius: var(--lumi-sys-shape--medium, 12px);
+      border: 1px solid var(--stroke-default, #e3e3e3);
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--lumi-sys-spacing--m, 12px);
+    }
+
+    .control-label {
+      font-size: 13px;
+      color: var(--on-surface, #000);
+      font-weight: 500;
+      min-width: 190px;
+      flex-shrink: 0;
+    }
+
+    .auto-mode-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--stroke-default, #e3e3e3);
+      margin-bottom: 2px;
+    }
+
+    :root[data-theme="dark"] .badge-plus {
+      background: #4a3800;
+      color: #ffe082;
+    }
+  </style>
+</head>
+<body>
+
+<div class="widget-container">
+  
+  <!-- Header Card -->
+  <div class="header-card">
+    <div class="header-title-row">
+      <h2 style="margin: 0; font-size: 18px; font-weight: 600;">Simulador Espinopélvico (SRS-Schwab)</h2>
+      <div class="scenario-deck">
+        <button type="button" class="lumi-btn scenario-btn is-selected" id="btn-normal">Normal</button>
+        <button type="button" class="lumi-btn scenario-btn" id="btn-compensated">Perda LL Compensada</button>
+        <button type="button" class="lumi-btn scenario-btn" id="btn-decompensated">Descompensação Franca</button>
+      </div>
+    </div>
+    
+    <div class="equation-banner">
+      <span>Morfologia Fixa: </span>
+      <span class="eq-val pi" id="eq-pi">PI 55°</span>
+      <span>=</span>
+      <span class="eq-val pt" id="eq-pt">PT 14°</span>
+      <span>+</span>
+      <span class="eq-val ss" id="eq-ss">SS 41°</span>
+    </div>
+  </div>
+
+  <!-- Canvas Simulation Viewport -->
+  <div class="widget-viewport" id="viewport-zone">
+    <div style="position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden;">
+      <canvas id="simCanvas" style="display: block; width: 100%; height: 100%;" tabindex="0"></canvas>
+    </div>
+  </div>
+
+  <!-- Schwab Modifier Cards -->
+  <div class="metrics-grid" id="metrics-zone">
+    <div class="metric-card" id="card-mismatch">
+      <div class="metric-header">
+        <span class="metric-title">Mismatch PI - LL</span>
+        <span class="schwab-badge badge-0" id="badge-mismatch">0</span>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-num" id="val-mismatch">0°</span>
+        <span class="metric-unit" id="target-mismatch">(Alvo: &lt;10°)</span>
+      </div>
+    </div>
+
+    <div class="metric-card" id="card-pt">
+      <div class="metric-header">
+        <span class="metric-title">Versão Pélvica (PT)</span>
+        <span class="schwab-badge badge-0" id="badge-pt">0</span>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-num" id="val-pt">14°</span>
+        <span class="metric-unit">(Alvo: &lt;20°)</span>
+      </div>
+    </div>
+
+    <div class="metric-card" id="card-sva">
+      <div class="metric-header">
+        <span class="metric-title">Eixo Sagital (SVA)</span>
+        <span class="schwab-badge badge-0" id="badge-sva">0</span>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-num" id="val-sva">15 mm</span>
+        <span class="metric-unit">(Alvo: &lt;40mm)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Controls Deck -->
+  <div class="control-deck">
+    
+    <div class="auto-mode-toggle">
+      <span style="font-size: 13px; font-weight: 600;">Mecanismo Compensatório da Pelve</span>
+      <label class="lumi-checkbox-label">
+        <input type="checkbox" id="toggle-auto" checked>
+        <span>Autocompensação (Retroversão Pélvica)</span>
+      </label>
+    </div>
+
+    <div class="control-row">
+      <label class="control-label" for="slider-pi">Incidência Pélvica (PI - Fixo)</label>
+      <div class="lumi-slider-container">
+        <input type="range" id="slider-pi" class="lumi-slider" data-key="pi" min="35" max="85" value="55" style="--progress: 40%;">
+        <div id="slider-pi-val" class="lumi-slider-value">55°</div>
+      </div>
+    </div>
+
+    <div class="control-row">
+      <label class="control-label" for="slider-ll">Lordose Lombar Real (LL)</label>
+      <div class="lumi-slider-container">
+        <input type="range" id="slider-ll" class="lumi-slider" data-key="ll" min="10" max="85" value="55" style="--progress: 60%;">
+        <div id="slider-ll-val" class="lumi-slider-value">55°</div>
+      </div>
+    </div>
+
+    <div class="control-row" id="row-pt-slider">
+      <label class="control-label" for="slider-pt">Versão Pélvica (PT - Manual)</label>
+      <div class="lumi-slider-container">
+        <input type="range" id="slider-pt" class="lumi-slider" data-key="pt" min="-5" max="45" value="14" style="--progress: 38%;" disabled>
+        <div id="slider-pt-val" class="lumi-slider-value">14°</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const state = {
+    pi: 55,
+    ll: 55,
+    pt: 14.3,
+    ss: 40.7,
+    sva: 15,
+    autoCompensate: true,
+    animating: false
+  };
+
+  let canvas = document.getElementById('simCanvas');
+  let ctx = canvas ? canvas.getContext('2d') : null;
+  let animReqId = null;
+
+  function getCssVar(name) {
+    if (!name) return '';
+    const clean = name.replace(/^var\(/, '').replace(/\)$/, '').trim();
+    return getComputedStyle(document.documentElement).getPropertyValue(clean.startsWith('--') ? clean : '--' + clean).trim();
+  }
+
+  function computeBiometrics() {
+    if (state.autoCompensate) {
+      const ptBasal = 0.26 * state.pi;
+      const llLoss = Math.max(0, state.pi - state.ll);
+      const ptMax = 38.0;
+      
+      // Retroversão pélvica compensatória aumenta o PT para manter C7 sobre o sacro
+      state.pt = Math.min(ptMax, ptBasal + llLoss * 0.75);
+      state.ss = state.pi - state.pt;
+
+      // SVA aumenta quando a perda de LL excede a capacidade de retroversão pélvica
+      const compensatedByPT = (state.pt - ptBasal) * 1.15;
+      const uncompensatedDeficit = Math.max(0, (state.pi - state.ll) - compensatedByPT);
+      state.sva = Math.round(15 + uncompensatedDeficit * 3.8);
+    } else {
+      state.ss = state.pi - state.pt;
+      const ptBasal = 0.26 * state.pi;
+      const uncompensatedDeficit = (state.pi - state.ll) - (state.pt - ptBasal);
+      state.sva = Math.round(15 + uncompensatedDeficit * 3.8);
+    }
+  }
+
+  function updateReadouts() {
+    computeBiometrics();
+
+    document.getElementById('eq-pi').textContent = `PI ${Math.round(state.pi)}°`;
+    document.getElementById('eq-pt').textContent = `PT ${Math.round(state.pt)}°`;
+    document.getElementById('eq-ss').textContent = `SS ${Math.round(state.ss)}°`;
+
+    const piSlider = document.getElementById('slider-pi');
+    const llSlider = document.getElementById('slider-ll');
+    const ptSlider = document.getElementById('slider-pt');
+
+    if (piSlider && !state.animating) {
+      piSlider.value = Math.round(state.pi);
+      piSlider.style.setProperty('--progress', ((state.pi - piSlider.min) / (piSlider.max - piSlider.min) * 100) + '%');
+      document.getElementById('slider-pi-val').textContent = `${Math.round(state.pi)}°`;
+    }
+
+    if (llSlider && !state.animating) {
+      llSlider.value = Math.round(state.ll);
+      llSlider.style.setProperty('--progress', ((state.ll - llSlider.min) / (llSlider.max - llSlider.min) * 100) + '%');
+      document.getElementById('slider-ll-val').textContent = `${Math.round(state.ll)}°`;
+    }
+
+    if (ptSlider) {
+      ptSlider.disabled = state.autoCompensate;
+      ptSlider.value = Math.round(state.pt);
+      ptSlider.style.setProperty('--progress', ((state.pt - ptSlider.min) / (ptSlider.max - ptSlider.min) * 100) + '%');
+      document.getElementById('slider-pt-val').textContent = `${Math.round(state.pt)}°`;
+    }
+
+    const mismatch = Math.round(state.pi - state.ll);
+    document.getElementById('val-mismatch').textContent = `${mismatch}°`;
+    updateBadge('badge-mismatch', Math.abs(mismatch), 10, 20);
+
+    const ptVal = Math.round(state.pt);
+    document.getElementById('val-pt').textContent = `${ptVal}°`;
+    updateBadge('badge-pt', ptVal, 20, 30);
+
+    const svaVal = state.sva;
+    document.getElementById('val-sva').textContent = `${svaVal} mm`;
+    updateBadge('badge-sva', svaVal, 40, 95);
+  }
+
+  function updateBadge(badgeId, val, threshold1, threshold2) {
+    const badge = document.getElementById(badgeId);
+    if (!badge) return;
+
+    badge.classList.remove('badge-0', 'badge-plus', 'badge-plus-plus');
+    if (val < threshold1) {
+      badge.textContent = '0';
+      badge.classList.add('badge-0');
+    } else if (val <= threshold2) {
+      badge.textContent = '+';
+      badge.classList.add('badge-plus');
+    } else {
+      badge.textContent = '++';
+      badge.classList.add('badge-plus-plus');
+    }
+  }
+
+  function renderBiomechanicalCanvas() {
+    if (!canvas || !ctx) return;
+
+    const box = canvas.parentElement;
+    const w = box.clientWidth || 600;
+    const h = box.clientHeight || 350;
+    const dpr = window.devicePixelRatio || 1;
+
+    if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+    }
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const colorOnSurface = getCssVar('--on-surface') || '#000000';
+    const colorVariant = getCssVar('--on-surface-variant') || '#666666';
+    const colorPI = getCssVar('--chart-1') || '#2575fc';
+    const colorPT = getCssVar('--chart-10') || '#c84288';
+    const colorSS = getCssVar('--chart-3') || '#228a49';
+    const colorSurfaceDim = getCssVar('--surface-dim') || '#f2f0f0';
+    const colorError = getCssVar('--error') || '#de2d29';
+
+    // ORIENTAÇÃO ANATÔMICA SAGITAL:
+    // Esquerda = POSTERIOR | Direita = ANTERIOR
+    // O eixo bicoxofemoral (cabeças femorais) fica ANTERIOR (à direita) ao centro do platô sacral (S1) quando PT > 0.
+    const femoralX = w * 0.48;
+    const femoralY = h - 60;
+    const pelvisR = 76; // Distância do centro da cabeça femoral ao centro do platô S1
+
+    const ptRad = (state.pt * Math.PI) / 180;
+    const ssRad = (state.ss * Math.PI) / 180;
+    const llRad = (state.ll * Math.PI) / 180;
+
+    // Coordenadas do centro do platô S1:
+    // Como a cabeça femoral é ANTERIOR (+X) ao sacro quando PT > 0, S1 fica POSTERIOR (-X) à cabeça femoral.
+    const s1X = femoralX - pelvisR * Math.sin(ptRad);
+    const s1Y = femoralY - pelvisR * Math.cos(ptRad);
+
+    // Platô Sacral (S1):
+    // Inclina-se para baixo e para a frente (direita = anterior).
+    // Portanto, a borda ANTERIOR (direita) é mais baixa (+Y) e a borda POSTERIOR (esquerda) é mais alta (-Y).
+    const s1Width = 40;
+    const s1Half = s1Width / 2;
+    const plateDx = s1Half * Math.cos(ssRad);
+    const plateDy = s1Half * Math.sin(ssRad);
+
+    const s1PostX = s1X - plateDx;
+    const s1PostY = s1Y - plateDy; // Canto póstero-superior de S1 (referência do SVA)
+    const s1AntX = s1X + plateDx;
+    const s1AntY = s1Y + plateDy;  // Canto ântero-superior de S1
+
+    // --- MARCADORES DE ORIENTAÇÃO (POSTERIOR / ANTERIOR) ---
+    ctx.font = "600 11px 'Google Sans Code', monospace";
+    ctx.fillStyle = colorVariant;
+    ctx.fillText("← POSTERIOR", 18, 24);
+    const antLabel = "ANTERIOR →";
+    ctx.fillText(antLabel, w - ctx.measureText(antLabel).width - 18, 24);
+
+    // --- LINHA DE SOLO / REFERÊNCIA BASE ---
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = colorVariant;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(25, femoralY + 32);
+    ctx.lineTo(w - 25, femoralY + 32);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // --- DESENHO DO CONTORNO PÉLVICO E SACRO ---
+    ctx.fillStyle = colorSurfaceDim;
+    ctx.strokeStyle = colorOnSurface;
+    ctx.lineWidth = 1.8;
+
+    // Contorno estilizado do sacro e pelve até o acetábulo (cabeça femoral)
+    ctx.beginPath();
+    ctx.moveTo(s1PostX, s1PostY);
+    ctx.lineTo(s1AntX, s1AntY);
+    ctx.quadraticCurveTo(femoralX + 10, (s1AntY + femoralY) / 2, femoralX, femoralY);
+    const sacrumTipX = s1PostX - 18 * Math.cos(ssRad - 0.3);
+    const sacrumTipY = s1PostY + 42 * Math.sin(ssRad + 0.5);
+    ctx.quadraticCurveTo(sacrumTipX, sacrumTipY, s1PostX, s1PostY);
+    ctx.globalAlpha = 0.55;
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+    ctx.stroke();
+
+    // --- DESENHO DO PLATÔ SACRAL (S1) ---
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = colorSS;
+    ctx.beginPath();
+    ctx.moveTo(s1PostX, s1PostY);
+    ctx.lineTo(s1AntX, s1AntY);
+    ctx.stroke();
+
+    // Linha horizontal de referência no centro de S1 para o ângulo SS
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = colorSS;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(s1X, s1Y);
+    ctx.lineTo(s1X + 42, s1Y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // --- LINHA PERPENDICULAR AO PLATÔ S1 (PARA DEFINIÇÃO DO PI) ---
+    // O vetor do platô para a frente é (+cos(ss), +sin(ss)).
+    // A normal apontando para baixo e para trás é (-sin(ss), +cos(ss)).
+    const perpLen = 58;
+    const perpX = s1X - perpLen * Math.sin(ssRad);
+    const perpY = s1Y + perpLen * Math.cos(ssRad);
+
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = colorPI;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(s1X, s1Y);
+    ctx.lineTo(perpX, perpY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // --- LINHA S1 AO EIXO BICOXOFEMORAL (CAB. FEMORAL) ---
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = colorPT;
+    ctx.beginPath();
+    ctx.moveTo(s1X, s1Y);
+    ctx.lineTo(femoralX, femoralY);
+    ctx.stroke();
+
+    // --- LINHA VERTICAL DE REFERÊNCIA NO EIXO BICOXOFEMORAL (PARA PT) ---
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = colorPT;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(femoralX, femoralY);
+    ctx.lineTo(femoralX, s1Y - 15);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // --- CABEÇA FEMORAL (EIXO BICOXOFEMORAL) ---
+    ctx.fillStyle = colorSurfaceDim;
+    ctx.strokeStyle = colorOnSurface;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(femoralX, femoralY, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = colorOnSurface;
+    ctx.beginPath();
+    ctx.arc(femoralX, femoralY, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = "600 10px 'Google Sans Code', monospace";
+    ctx.fillStyle = colorVariant;
+    ctx.fillText("Eixo Bicoxofemoral", femoralX - 48, femoralY + 26);
+
+    // --- COLUNA VERTEBRAL (LORDOSE LOMBAR E CIFOSE TORÁCICA ATÉ C7) ---
+    // SVA é medido horizontalmente do canto póstero-superior do platô S1 (s1PostX) até a linha de prumo de C7.
+    const svaPxOffset = state.sva * 1.15; // Escala visual (mm -> px)
+    const C7_X = s1PostX + svaPxOffset;
+    const C7_Y = s1Y - 160;
+
+    // A coluna sai perpendicularmente ao platô S1 (para cima e para a frente: +sin(ss), -cos(ss))
+    // e curva-se para trás de acordo com a Lordose Lombar (LL)
+    const lordosisDepth = (state.ll - 15) * 0.65;
+    const ctrl1X = s1X + Math.sin(ssRad) * 45 - lordosisDepth * 0.35;
+    const ctrl1Y = s1Y - Math.cos(ssRad) * 45;
+    const ctrl2X = Math.min(s1X, C7_X) - lordosisDepth * 0.85;
+    const ctrl2Y = (s1Y + C7_Y) * 0.52;
+
+    ctx.lineWidth = 5.5;
+    ctx.strokeStyle = colorOnSurface;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(s1X, s1Y);
+    ctx.bezierCurveTo(ctrl1X, ctrl1Y, ctrl2X, ctrl2Y, C7_X, C7_Y);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // Corpo vertebral de C7
+    ctx.fillStyle = colorOnSurface;
+    ctx.beginPath();
+    ctx.arc(C7_X, C7_Y, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = "bold 12px 'Google Sans Code', monospace";
+    ctx.fillStyle = colorOnSurface;
+    ctx.fillText("C7", C7_X - 8, C7_Y - 10);
+
+    // --- LINHA DE PRUMO DE C7 E MEDIDA DO SVA (REFERÊNCIA: S1 PÓSTERO-SUPERIOR) ---
+    const isSvaHigh = state.sva >= 40;
+    const svaColor = isSvaHigh ? colorError : colorOnSurface;
+
+    // Linha de prumo descendo de C7
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = svaColor;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(C7_X, C7_Y);
+    ctx.lineTo(C7_X, s1PostY + 25);
+    ctx.stroke();
+
+    // Linha de referência vertical no canto póstero-superior de S1
+    ctx.strokeStyle = colorVariant;
+    ctx.beginPath();
+    ctx.moveTo(s1PostX, s1PostY - 35);
+    ctx.lineTo(s1PostX, s1PostY + 15);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Ponto destacando o canto póstero-superior de S1
+    ctx.fillStyle = colorSS;
+    ctx.beginPath();
+    ctx.arc(s1PostX, s1PostY, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Seta / Barra horizontal do SVA entre S1 póstero-superior e a linha de prumo de C7
+    const svaMeasureY = s1PostY - 22;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = svaColor;
+    ctx.beginPath();
+    ctx.moveTo(s1PostX, svaMeasureY);
+    ctx.lineTo(C7_X, svaMeasureY);
+    ctx.stroke();
+
+    // Pequenas hastes nas extremidades da cota do SVA
+    ctx.beginPath();
+    ctx.moveTo(s1PostX, svaMeasureY - 4);
+    ctx.lineTo(s1PostX, svaMeasureY + 4);
+    ctx.moveTo(C7_X, svaMeasureY - 4);
+    ctx.lineTo(C7_X, svaMeasureY + 4);
+    ctx.stroke();
+
+    ctx.fillStyle = svaColor;
+    ctx.font = "bold 11px 'Google Sans Code', monospace";
+    const midSvaX = (s1PostX + C7_X) / 2;
+    ctx.fillText(`SVA: ${state.sva}mm`, midSvaX - 28, svaMeasureY - 7);
+
+    // --- ARCOS DE ÂNGULOS (SS, PT, PI) ---
+    // 1. Arco SS (entre a horizontal 0 rad e o platô sacral +ssRad)
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = colorSS;
+    ctx.beginPath();
+    ctx.arc(s1X, s1Y, 26, 0, ssRad, false);
+    ctx.stroke();
+    ctx.font = "bold 11px 'Google Sans Code', monospace";
+    ctx.fillStyle = colorSS;
+    ctx.fillText(`SS ${Math.round(state.ss)}°`, s1X + 30, s1Y + 14);
+
+    // 2. Arco PT (no eixo bicoxofemoral, entre a vertical -PI/2 e a linha para S1: -PI/2 - ptRad)
+    ctx.strokeStyle = colorPT;
+    ctx.beginPath();
+    const angleVertUp = -Math.PI / 2;
+    const angleFemToS1 = -Math.PI / 2 - ptRad;
+    ctx.arc(femoralX, femoralY, 38, Math.min(angleVertUp, angleFemToS1), Math.max(angleVertUp, angleFemToS1));
+    ctx.stroke();
+    ctx.fillStyle = colorPT;
+    ctx.fillText(`PT ${Math.round(state.pt)}°`, femoralX - 28, femoralY - 44);
+
+    // 3. Arco PI (no centro de S1, entre a perpendicular ao platô e a linha S1-Fêmur)
+    // Ângulo da perpendicular para baixo/trás: PI/2 + ssRad
+    // Ângulo de S1 para a cabeça femoral: PI/2 - ptRad
+    const angleS1ToFem = Math.PI / 2 - ptRad;
+    const anglePerp = Math.PI / 2 + ssRad;
+    ctx.strokeStyle = colorPI;
+    ctx.beginPath();
+    ctx.arc(s1X, s1Y, 28, angleS1ToFem, anglePerp, false);
+    ctx.stroke();
+    ctx.fillStyle = colorPI;
+    ctx.fillText(`PI ${Math.round(state.pi)}°`, s1X - 48, s1Y + 38);
+
+    ctx.restore();
+  }
+
+  function animateTo(targetPI, targetLL, targetPT, duration = 400) {
+    state.animating = true;
+    const startPI = state.pi;
+    const startLL = state.ll;
+    const startPT = state.pt;
+    const startTime = performance.now();
+
+    function step(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const ease = 1 - Math.pow(1 - progress, 3);
+
+      state.pi = startPI + (targetPI - startPI) * ease;
+      state.ll = startLL + (targetLL - startLL) * ease;
+      if (!state.autoCompensate && targetPT !== undefined) {
+        state.pt = startPT + (targetPT - startPT) * ease;
+      }
+
+      updateViz();
+
+      if (progress < 1) {
+        animReqId = requestAnimationFrame(step);
+      } else {
+        state.animating = false;
+        updateViz();
+      }
+    }
+
+    if (animReqId) cancelAnimationFrame(animReqId);
+    animReqId = requestAnimationFrame(step);
+  }
+
+  function updateViz() {
+    updateReadouts();
+    renderBiomechanicalCanvas();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lumi-slider').forEach(slider => {
+      slider.addEventListener('input', (e) => {
+        if (state.animating) return;
+        const val = parseFloat(e.target.value);
+        const key = e.target.dataset.key;
+        state[key] = val;
+
+        const pct = (e.target.value - e.target.min) / (e.target.max - e.target.min) * 100;
+        e.target.style.setProperty('--progress', pct + '%');
+        const valBadge = document.getElementById(`${e.target.id}-val`);
+        if (valBadge) valBadge.textContent = `${Math.round(val)}°`;
+
+        updateViz();
+      });
+    });
+
+    const toggleAuto = document.getElementById('toggle-auto');
+    if (toggleAuto) {
+      toggleAuto.addEventListener('change', (e) => {
+        state.autoCompensate = e.target.checked;
+        updateViz();
+      });
+    }
+
+    const btnNormal = document.getElementById('btn-normal');
+    const btnCompensated = document.getElementById('btn-compensated');
+    const btnDecompensated = document.getElementById('btn-decompensated');
+
+    function setActiveBtn(activeBtn) {
+      [btnNormal, btnCompensated, btnDecompensated].forEach(btn => btn?.classList.remove('is-selected'));
+      activeBtn?.classList.add('is-selected');
+    }
+
+    btnNormal?.addEventListener('click', () => {
+      setActiveBtn(btnNormal);
+      if (toggleAuto) toggleAuto.checked = true;
+      state.autoCompensate = true;
+      animateTo(55, 55);
+    });
+
+    btnCompensated?.addEventListener('click', () => {
+      setActiveBtn(btnCompensated);
+      if (toggleAuto) toggleAuto.checked = true;
+      state.autoCompensate = true;
+      animateTo(55, 32);
+    });
+
+    btnDecompensated?.addEventListener('click', () => {
+      setActiveBtn(btnDecompensated);
+      if (toggleAuto) toggleAuto.checked = true;
+      state.autoCompensate = true;
+      animateTo(55, 12);
+    });
+
+    window.addEventListener('resize', () => {
+      renderBiomechanicalCanvas();
+    });
+
+    updateViz();
+  });
+</script>
+
+</body>
+</html>
