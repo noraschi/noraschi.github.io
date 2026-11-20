@@ -17,9 +17,20 @@
     --warning: #f59e0b;
     --danger: #ef4444;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body { background: var(--bg); color: var(--text); padding: 16px; line-height: 1.45; }
-  .container { max-width: 1180px; margin: 0 auto; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    line-height: 1.45;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100% !important;
+    position: static !important;
+    touch-action: pan-x pan-y !important;
+  }
+  .container { max-width: 1180px; margin: 0 auto; overflow: visible; }
   header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
   h1 { font-size: 1.25rem; font-weight: 700; }
   .subtitle { font-size: 0.82rem; color: var(--muted); }
@@ -91,7 +102,6 @@
   </div>
 
   <div class="grid">
-    <!-- Controles Anatômicos -->
     <div class="panel">
       <div class="panel-title"><span>1. Parâmetros Anatômicos e Patológicos do Paciente</span></div>
 
@@ -144,47 +154,37 @@
       <div class="corridor-list" id="corridorCards"></div>
     </div>
 
-    <!-- Visualizador Axial Dinâmico -->
     <div class="panel">
       <div class="panel-title"><span>Mapa Axial Interativo — Trajetória e Estruturas de Risco</span></div>
       <div class="svg-box">
         <svg id="missSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 290" width="100%">
-          <!-- Fundo e rótulos cardinais -->
           <text x="210" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#94a3b8">ANTERIOR (Retroperitônio / Abdome)</text>
           <text x="210" y="282" text-anchor="middle" font-size="11" font-weight="bold" fill="#94a3b8">POSTERIOR (Linha Média / Multífidos)</text>
           <text x="28" y="150" text-anchor="middle" font-size="10" fill="#64748b">DIR</text>
           <text x="392" y="150" text-anchor="middle" font-size="10" fill="#64748b">ESQ</text>
 
-          <!-- Crista Ilíaca Esquerda (Muro Ósseo Lateral quando alta ou L5-S1) -->
           <path id="iliacWall" d="M 345 110 Q 375 155 345 205" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round" opacity="0.85"/>
           <text id="iliacLabel" x="366" y="102" text-anchor="middle" font-size="10" font-weight="bold" fill="#ef4444">Crista Ilíaca</text>
 
-          <!-- Disco / Corpo Vertebral -->
           <ellipse cx="210" cy="148" rx="54" ry="38" fill="#334155" stroke="#94a3b8" stroke-width="2"/>
           <text x="210" y="152" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Disco / Corpo</text>
 
-          <!-- Elementos Posteriores e Canal -->
           <path d="M 164 166 L 154 205 L 210 238 L 266 205 L 256 166" fill="none" stroke="#94a3b8" stroke-width="3"/>
           <circle cx="210" cy="196" r="16" fill="#0284c7" fill-opacity="0.35" stroke="#38bdf8" stroke-width="1.5"/>
 
-          <!-- Músculos Paravertebrais Posteriores -->
           <ellipse cx="182" cy="235" rx="22" ry="14" fill="#22c55e" fill-opacity="0.18" stroke="#22c55e" stroke-width="1"/>
           <ellipse cx="238" cy="235" rx="22" ry="14" fill="#22c55e" fill-opacity="0.18" stroke="#22c55e" stroke-width="1"/>
 
-          <!-- Vasos Anteriores -->
           <circle id="veinCircle" cx="184" cy="98" r="12" fill="#3b82f6" fill-opacity="0.4" stroke="#3b82f6" stroke-width="2"/>
           <text x="166" y="96" text-anchor="end" font-size="9" fill="#60a5fa" font-weight="bold">V. Ilíaca/VCI</text>
           <circle id="artCircle" cx="236" cy="98" r="11" fill="#ef4444" fill-opacity="0.4" stroke="#ef4444" stroke-width="2"/>
           <text x="252" y="92" text-anchor="start" font-size="9" fill="#f87171" font-weight="bold">Aorta/Ilíaca</text>
 
-          <!-- Psoas Direito e Esquerdo -->
           <ellipse cx="134" cy="150" rx="25" ry="34" fill="#475569" fill-opacity="0.4" stroke="#64748b" stroke-width="1.5"/>
           <ellipse id="psoasLeft" cx="286" cy="150" rx="25" ry="34" fill="#475569" fill-opacity="0.4" stroke="#64748b" stroke-width="1.5"/>
-          <!-- Plexo Lombar no Psoas Esquerdo -->
           <circle id="plexusDot" cx="294" cy="160" r="6" fill="#f59e0b" stroke="#0f172a" stroke-width="1.5"/>
           <text id="plexusLabel" x="286" y="196" text-anchor="middle" font-size="9" fill="#fbbf24" font-weight="bold">Psoas + Plexo</text>
 
-          <!-- Trajetória Cirúrgica Recomendada (Feixe Dinâmico) -->
           <line id="trajLine" x1="210" y1="32" x2="210" y2="108" stroke="#22c55e" stroke-width="6" stroke-linecap="round"/>
           <circle id="trajTip" cx="210" cy="108" r="6" fill="#22c55e"/>
           <rect id="trajBadge" x="135" y="26" width="150" height="20" rx="4" fill="#0f172a" stroke="#22c55e" stroke-width="1.5"/>
@@ -201,6 +201,22 @@
 </div>
 
 <script>
+  (function liberarRolagem() {
+    const style = document.createElement('style');
+    style.textContent = `
+      html, body {
+        overflow: auto !important;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        height: auto !important;
+        min-height: 100% !important;
+        position: static !important;
+        touch-action: pan-x pan-y !important;
+      }
+    `;
+    document.head.appendChild(style);
+  })();
+
   let cfg = {
     level: 'L5-S1',
     iliac: 'high',
@@ -226,7 +242,6 @@
     const isL5S1 = cfg.level === 'L5-S1';
     const isL4L5 = cfg.level === 'L4-L5';
 
-    // Atualizar anatomia SVG (Crista, Psoas, Vasos)
     const iliacWall = document.getElementById('iliacWall');
     const iliacLabel = document.getElementById('iliacLabel');
     const showIliacBlock = isL5S1 || (isL4L5 && cfg.iliac === 'high');
@@ -250,16 +265,13 @@
     const vein = document.getElementById('veinCircle');
     const art = document.getElementById('artCircle');
     if (isL5S1) {
-      // Vasos já bifurcados lateralmente abrindo janela ALIF
       vein.setAttribute('cx', '172');
       art.setAttribute('cx', '248');
     } else {
-      // Vasos mais próximos na linha média acima de L5-S1
       vein.setAttribute('cx', '188');
       art.setAttribute('cx', '230');
     }
 
-    // Avaliar cada técnica
     let best = { code: '', title: '', desc: '', lordosis: '', risk: '', pearl: '', coords: [210,32,210,108], label: '' };
     let cards = [];
 
@@ -318,7 +330,6 @@
         label: 'MIS-TLIF (Descomp. Direta)'
       };
     } else {
-      // Fusão com descompressão indireta ou ganho de lordose
       if (isL5S1) {
         if (cfg.vasc === 'open') {
           best = {
@@ -342,7 +353,6 @@
           };
         }
       } else {
-        // L2-L3, L3-L4 ou L4-L5
         if (cfg.psoas === 'teardrop' || (isL4L5 && cfg.iliac === 'high')) {
           if (cfg.vasc === 'open') {
             best = {
@@ -379,7 +389,6 @@
       }
     }
 
-    // Atualizar Banner e SVG Trajetória
     document.getElementById('verdictTitle').textContent = best.title;
     document.getElementById('verdictDesc').textContent = best.desc;
     document.getElementById('mLevel').textContent = cfg.level;
@@ -406,7 +415,6 @@
     tText.setAttribute('x', bx + 75);
     tText.setAttribute('y', by + 14);
 
-    // Cards comparativos das 4 grandes famílias
     const statusList = [
       {
         name: 'ALIF (Anterior)',
