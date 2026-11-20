@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Clínico Interativo — Protocolo NOMS & Escore SINS</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-alt: #263349;
+    --border: #334155;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 16px; line-height: 1.45; }
+  .container { max-width: 1180px; margin: 0 auto; }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  h1 { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+  .subtitle { font-size: 0.82rem; color: var(--muted); }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preset-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; }
+  .preset-btn:hover { border-color: var(--accent); background: var(--card-alt); }
+  
+  /* Verdict Banner */
+  .verdict-banner { background: var(--card); border: 1px solid var(--border); border-left: 5px solid var(--accent); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .verdict-tag { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; margin-bottom: 6px; }
+  .verdict-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; }
+  .verdict-desc { font-size: 0.86rem; color: var(--muted); }
+  .noms-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { background: var(--bg); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; text-align: center; min-width: 78px; }
+  .pill-letter { font-size: 0.7rem; color: var(--muted); font-weight: 700; }
+  .pill-val { font-size: 0.9rem; font-weight: 700; margin-top: 2px; }
+
+  /* Main Grid */
+  .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .verdict-banner { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .panel-title { font-size: 0.92rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  
+  .control-group { display: flex; flex-direction: column; gap: 6px; }
+  .control-label { font-size: 0.82rem; font-weight: 600; color: var(--text); display: flex; justify-content: space-between; }
+  .seg-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(52px, 1fr)); gap: 5px; }
+  .seg-btn { background: var(--bg); border: 1px solid var(--border); color: var(--muted); padding: 7px 6px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; }
+  .seg-btn.active { background: var(--accent); color: #0f172a; border-color: var(--accent); }
+  .seg-btn.active-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .seg-btn.active-warn { background: var(--warning); color: #0f172a; border-color: var(--warning); }
+  .seg-btn.active-ok { background: var(--success); color: #0f172a; border-color: var(--success); }
+
+  select { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px 10px; border-radius: 6px; font-size: 0.84rem; }
+  .sins-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 550px) { .sins-grid { grid-template-columns: 1fr; } }
+
+  .svg-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; }
+  .sins-meter { width: 100%; height: 12px; background: var(--bg); border-radius: 6px; overflow: hidden; display: flex; border: 1px solid var(--border); margin-top: 4px; }
+  .sins-fill { height: 100%; transition: width 0.3s, background-color 0.3s; }
+  .pearl-box { background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px; font-size: 0.82rem; color: #e2e8f0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>Simulador Clínico Interativo — Protocolo NOMS & Escore SINS</h1>
+      <div class="subtitle">Memorial Sloan Kettering Cancer Center (Laufer et al. / Bilsky ESCC / Fisher SINS)</div>
+    </div>
+    <div class="presets">
+      <button class="preset-btn" onclick="applyPreset('sep')">Caso 1: Rim + Bilsky 3 (Separação)</button>
+      <button class="preset-btn" onclick="applyPreset('myeloma')">Caso 2: Mieloma + Bilsky 3 (cEBRT)</button>
+      <button class="preset-btn" onclick="applyPreset('srs')">Caso 3: Melanoma + Bilsky 1b (SRS)</button>
+      <button class="preset-btn" onclick="applyPreset('instable')">Caso 4: Mama + SINS 14 (Instável)</button>
+    </div>
+  </header>
+
+  <!-- Banner de Conduta NOMS -->
+  <div class="verdict-banner" id="verdictBanner">
+    <div>
+      <span class="verdict-tag" id="verdictTag">CONDUTA NOMS</span>
+      <div class="verdict-title" id="verdictTitle">Cirurgia de Separação + Estabilização → SRS Pós-Operatória</div>
+      <div class="verdict-desc" id="verdictDesc">Compressão medular de alto grau (Bilsky 3) por tumor radiorresistente exige criação de margem epidural de 2–3 mm para viabilizar Radiocirurgia Estereotáxica ablativa.</div>
+    </div>
+    <div class="noms-pills">
+      <div class="pill"><div class="pill-letter">N (BILSKY)</div><div class="pill-val" id="pillN">Grau 3</div></div>
+      <div class="pill"><div class="pill-letter">O (TUMOR)</div><div class="pill-val" id="pillO">Resistente</div></div>
+      <div class="pill"><div class="pill-letter">M (SINS)</div><div class="pill-val" id="pillM">11 pts</div></div>
+      <div class="pill"><div class="pill-letter">S (CLÍNICO)</div><div class="pill-val" id="pillS">Apto</div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Painel Esquerdo: Controles N, O, S e SINS -->
+    <div class="panel">
+      <div class="panel-title"><span>1. Pilares N · O · S (Neurológico, Oncológico e Sistêmico)</span></div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>N — Escala de Bilsky (Compressão Epidural em RM T2 Axial):</span>
+          <span id="bilskyLabel" style="color:var(--danger)">High-Grade (ESCC 3)</span>
+        </div>
+        <div class="seg-group" id="bilskyGroup">
+          <button class="seg-btn" data-val="0" onclick="setBilsky('0')">0</button>
+          <button class="seg-btn" data-val="1a" onclick="setBilsky('1a')">1a</button>
+          <button class="seg-btn" data-val="1b" onclick="setBilsky('1b')">1b</button>
+          <button class="seg-btn" data-val="1c" onclick="setBilsky('1c')">1c</button>
+          <button class="seg-btn" data-val="2" onclick="setBilsky('2')">2</button>
+          <button class="seg-btn active-danger" data-val="3" onclick="setBilsky('3')">3</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label"><span>N — Mielopatia Clínica (Hiperreflexia, Babinski, Déficit Motor):</span></div>
+        <div class="seg-group" id="myeloGroup">
+          <button class="seg-btn" data-val="no" onclick="setMyelo('no')">Ausente</button>
+          <button class="seg-btn active-danger" data-val="yes" onclick="setMyelo('yes')">Presente (Mielopatia)</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label"><span>O — Histologia Tumoral (Radiossensibilidade):</span></div>
+        <select id="tumorSelect" onchange="updateAll()">
+          <optgroup label="Tumores Radiorresistentes (Exigem SRS/SBRT)">
+            <option value="res_rim" selected>Carcinoma de Células Renais (Rim) — Radiorresistente</option>
+            <option value="res_melanoma">Melanoma — Radiorresistente</option>
+            <option value="res_sarcoma">Sarcoma — Radiorresistente</option>
+            <option value="res_nsclc">Pulmão Não Pequenas Células (NSCLC) — Radiorresistente</option>
+            <option value="res_colon">Adenocarcinoma Colorretal / TGI — Radiorresistente</option>
+          </optgroup>
+          <optgroup label="Tumores Radiossensíveis (Respondem à cEBRT)">
+            <option value="sens_mieloma">Mieloma Múltiplo / Plasmocitoma — Altamente Radiossensível</option>
+            <option value="sens_linfoma">Linfoma — Altamente Radiossensível</option>
+            <option value="sens_mama">Carcinoma de Mama — Radiossensível</option>
+            <option value="sens_prostata">Carcinoma de Próstata — Radiossensível</option>
+            <option value="sens_seminoma">Seminoma — Altamente Radiossensível</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label"><span>S — Condição Sistêmica / Tolerância Cirúrgica (Sobrevida > 3m, KPS):</span></div>
+        <div class="seg-group" id="sysGroup">
+          <button class="seg-btn active-ok" data-val="fit" onclick="setSys('fit')">Apto para Cirurgia</button>
+          <button class="seg-btn" data-val="unfit" onclick="setSys('unfit')">Inapto / Paliativo Exclusivo</button>
+        </div>
+      </div>
+
+      <div class="panel-title" style="margin-top:4px;">
+        <span>2. Pilar M — Calculadora do Escore SINS</span>
+        <span id="sinsTotalBadge" style="color:var(--warning)">11 / 18 pts (Indeterminado)</span>
+      </div>
+
+      <div class="sins-grid">
+        <div class="control-group">
+          <div class="control-label"><span>Localização:</span></div>
+          <select id="sinsLoc" onchange="updateAll()">
+            <option value="3" selected>Juncional (C0-C2, C7-T2, T11-L1, L5-S1) [+3]</option>
+            <option value="2">Coluna Móvel (C3-C6, L2-L4) [+2]</option>
+            <option value="1">Semirrígida (T3-T10) [+1]</option>
+            <option value="0">Rígida (S2-S5) [0]</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <div class="control-label"><span>Dor Mecânica:</span></div>
+          <select id="sinsPain" onchange="updateAll()">
+            <option value="3" selected>Presente (piora com carga/ortostase) [+3]</option>
+            <option value="1">Ocasional / Não mecânica [+1]</option>
+            <option value="0">Indolor [0]</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <div class="control-label"><span>Lesão Óssea:</span></div>
+          <select id="sinsBone" onchange="updateAll()">
+            <option value="2" selected>Lítica [+2]</option>
+            <option value="1">Mista (Lítica/Blástica) [+1]</option>
+            <option value="0">Blástica [0]</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <div class="control-label"><span>Alinhamento Radiográfico:</span></div>
+          <select id="sinsAlign" onchange="updateAll()">
+            <option value="4">Subluxação / Translação [+4]</option>
+            <option value="2">Deformidade de novo (cifose/escoliose) [+2]</option>
+            <option value="0" selected>Alinhamento Normal [0]</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <div class="control-label"><span>Colapso do Corpo:</span></div>
+          <select id="sinsCollapse" onchange="updateAll()">
+            <option value="3">Colapso > 50% [+3]</option>
+            <option value="2" selected>Colapso < 50% [+2]</option>
+            <option value="1">Sem colapso (> 50% do corpo acometido) [+1]</option>
+            <option value="0">Nenhum dos anteriores [0]</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <div class="control-label"><span>Elementos Posterolaterais:</span></div>
+          <select id="sinsPost" onchange="updateAll()">
+            <option value="3">Envolvimento Bilateral [+3]</option>
+            <option value="1" selected>Envolvimento Unilateral [+1]</option>
+            <option value="0">Intactos [0]</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Painel Direito: Visualizador Anatômico Bilsky + SINS + Pérola -->
+    <div class="panel">
+      <div class="panel-title"><span>Visualizador Axial RM-T2 (Escala de Bilsky)</span></div>
+      
+      <div class="svg-box">
+        <svg id="bilskySvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" width="100%">
+          <!-- Corpo Vertebral Anterior -->
+          <path d="M 110 25 Q 180 12 250 25 Q 262 65 245 85 L 115 85 Q 98 65 110 25 Z" fill="#334155" stroke="#64748b" stroke-width="2"/>
+          <text x="180" y="48" text-anchor="middle" font-size="11" fill="#94a3b8" font-weight="bold">Corpo Vertebral</text>
+          
+          <!-- Arco Posterior (Lâminas e Processo Espinhoso) -->
+          <path d="M 115 85 L 95 125 L 130 185 L 180 202 L 230 185 L 265 125 L 245 85" fill="none" stroke="#64748b" stroke-width="6" stroke-linejoin="round"/>
+          
+          <!-- Saco Dural / Líquor (Azul brilhante T2) -->
+          <ellipse id="duralSac" cx="180" cy="132" rx="44" ry="34" fill="#0284c7" fill-opacity="0.35" stroke="#38bdf8" stroke-width="2"/>
+          
+          <!-- Massa Tumoral Epidural (Vermelho) -->
+          <path id="tumorMass" d="M 122 84 Q 180 155 238 84 Z" fill="#ef4444" fill-opacity="0.88" stroke="#fca5a5" stroke-width="1.5"/>
+          
+          <!-- Medula Espinhal -->
+          <ellipse id="spinalCord" cx="180" cy="146" rx="24" ry="11" fill="#f8fafc" stroke="#0f172a" stroke-width="2"/>
+          
+          <!-- Legenda Dinâmica -->
+          <text id="svgCaption" x="180" y="215" text-anchor="middle" font-size="11" font-weight="bold" fill="#ef4444">Bilsky 3: Obliteração completa do líquor + Compressão medular</text>
+        </svg>
+      </div>
+
+      <div>
+        <div class="control-label">
+          <span>Termômetro de Instabilidade Mecânica (SINS):</span>
+          <span id="sinsCategoryText" style="color:var(--warning)">7–12: Potencialmente Instável</span>
+        </div>
+        <div class="sins-meter">
+          <div id="sinsFill" class="sins-fill" style="width:61%; background:var(--warning);"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--muted); margin-top:4px;">
+          <span>0–6: Estável</span>
+          <span>7–12: Indeterminado</span>
+          <span>13–18: Instável</span>
+        </div>
+      </div>
+
+      <div class="pearl-box" id="pearlBox">
+        <strong>Raciocínio Biomecânico & Cirúrgico:</strong><br>
+        Como o carcinoma renal é <strong>radiorresistente</strong>, a radioterapia convencional (cEBRT) tem alta taxa de falha local. Para usar a <strong>Radiocirurgia (SRS)</strong> com segurança, é obrigatório criar um espaço de 2–3 mm entre o tumor e a medula por meio da <strong>Cirurgia de Separação</strong>, seguida de fixação (preferencialmente com implantes de PEEK-fibra de carbono para evitar artefato na TC de planejamento).
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let state = {
+    bilsky: '3',
+    myelo: 'yes'
+  };
+
+  function setBilsky(val) {
+    state.bilsky = val;
+    document.querySelectorAll('#bilskyGroup .seg-btn').forEach(btn => {
+      btn.className = 'seg-btn';
+      if (btn.dataset.val === val) {
+        if (val === '2' || val === '3') btn.classList.add('active-danger');
+        else if (val === '1c') btn.classList.add('active-warn');
+        else btn.classList.add('active-ok');
+      }
+    });
+    updateAll();
+  }
+
+  function setMyelo(val) {
+    state.myelo = val;
+    document.querySelectorAll('#myeloGroup .seg-btn').forEach(btn => {
+      btn.className = 'seg-btn';
+      if (btn.dataset.val === val) {
+        btn.classList.add(val === 'yes' ? 'active-danger' : 'active-ok');
+      }
+    });
+    updateAll();
+  }
+
+  function setSys(val) {
+    state.sys = val;
+    document.querySelectorAll('#sysGroup .seg-btn').forEach(btn => {
+      btn.className = 'seg-btn';
+      if (btn.dataset.val === val) {
+        btn.classList.add(val === 'fit' ? 'active-ok' : 'active-danger');
+      }
+    });
+    updateAll();
+  }
+  state.sys = 'fit';
+
+  function updateBilskyVisual(b) {
+    const tumor = document.getElementById('tumorMass');
+    const cord = document.getElementById('spinalCord');
+    const sac = document.getElementById('duralSac');
+    const cap = document.getElementById('svgCaption');
+
+    sac.setAttribute('ry', '34');
+    sac.setAttribute('cy', '132');
+    cord.setAttribute('cx', '180');
+    cord.setAttribute('cy', '134');
+    cord.setAttribute('rx', '22');
+    cord.setAttribute('ry', '16');
+
+    if (b === '0') {
+      tumor.setAttribute('d', 'M 135 60 Q 180 78 225 60 L 225 78 L 135 78 Z');
+      cap.textContent = 'Bilsky 0: Doença restrita ao osso (sem invasão epidural)';
+      cap.setAttribute('fill', '#22c55e');
+    } else if (b === '1a') {
+      tumor.setAttribute('d', 'M 130 84 Q 180 99 230 84 Z');
+      cap.textContent = 'Bilsky 1a: Toca o saco tecal sem deformar o líquor';
+      cap.setAttribute('fill', '#22c55e');
+    } else if (b === '1b') {
+      tumor.setAttribute('d', 'M 126 84 Q 180 112 234 84 Z');
+      cord.setAttribute('cy', '136');
+      cap.textContent = 'Bilsky 1b: Deforma o saco tecal sem tocar na medula';
+      cap.setAttribute('fill', '#22c55e');
+    } else if (b === '1c') {
+      tumor.setAttribute('d', 'M 124 84 Q 180 120 236 84 Z');
+      cord.setAttribute('cy', '138');
+      cap.textContent = 'Bilsky 1c: Encosta na medula sem comprimir (Low-Grade)';
+      cap.setAttribute('fill', '#f59e0b');
+    } else if (b === '2') {
+      tumor.setAttribute('d', 'M 122 84 Q 180 138 238 84 Z');
+      cord.setAttribute('cy', '144');
+      cord.setAttribute('rx', '24');
+      cord.setAttribute('ry', '12');
+      cap.textContent = 'Bilsky 2 (High-Grade): Comprime medula, ainda com líquor visível';
+      cap.setAttribute('fill', '#ef4444');
+    } else {
+      tumor.setAttribute('d', 'M 118 84 Q 180 158 242 84 Z');
+      cord.setAttribute('cy', '151');
+      cord.setAttribute('rx', '25');
+      cord.setAttribute('ry', '9');
+      cap.textContent = 'Bilsky 3 (High-Grade): Sem líquor + Compressão medular severa';
+      cap.setAttribute('fill', '#ef4444');
+    }
+  }
+
+  function updateAll() {
+    updateBilskyVisual(state.bilsky);
+
+    const isHighGradeN = (state.bilsky === '2' || state.bilsky === '3' || state.myelo === 'yes');
+    const tumorVal = document.getElementById('tumorSelect').value;
+    const isResistant = tumorVal.startsWith('res_');
+
+    const sins = 
+      parseInt(document.getElementById('sinsLoc').value) +
+      parseInt(document.getElementById('sinsPain').value) +
+      parseInt(document.getElementById('sinsBone').value) +
+      parseInt(document.getElementById('sinsAlign').value) +
+      parseInt(document.getElementById('sinsCollapse').value) +
+      parseInt(document.getElementById('sinsPost').value);
+
+    // Atualizar UI do SINS
+    const sinsBadge = document.getElementById('sinsTotalBadge');
+    const sinsFill = document.getElementById('sinsFill');
+    const sinsCat = document.getElementById('sinsCategoryText');
+    sinsFill.style.width = `${(sins / 18) * 100}%`;
+
+    let sinsStatus = 'Estável';
+    let sinsColor = 'var(--success)';
+    if (sins >= 13) { sinsStatus = 'Instável'; sinsColor = 'var(--danger)'; }
+    else if (sins >= 7) { sinsStatus = 'Indeterminado'; sinsColor = 'var(--warning)'; }
+
+    sinsBadge.textContent = `${sins} / 18 pts (${sinsStatus})`;
+    sinsBadge.style.color = sinsColor;
+    sinsFill.style.backgroundColor = sinsColor;
+    sinsCat.textContent = sins >= 13 ? '13–18: Francamente Instável' : (sins >= 7 ? '7–12: Potencialmente Instável' : '0–6: Estável');
+    sinsCat.style.color = sinsColor;
+
+    // Atualizar Pills
+    document.getElementById('pillN').textContent = `Bilsky ${state.bilsky}`;
+    document.getElementById('pillN').style.color = isHighGradeN ? 'var(--danger)' : 'var(--success)';
+    document.getElementById('pillO').textContent = isResistant ? 'Resistente' : 'Sensível';
+    document.getElementById('pillO').style.color = isResistant ? 'var(--accent)' : 'var(--success)';
+    document.getElementById('pillM').textContent = `${sins} pts`;
+    document.getElementById('pillM').style.color = sinsColor;
+    document.getElementById('pillS').textContent = state.sys === 'fit' ? 'Apto' : 'Inapto';
+    document.getElementById('pillS').style.color = state.sys === 'fit' ? 'var(--success)' : 'var(--danger)';
+
+    document.getElementById('bilskyLabel').textContent = isHighGradeN ? `High-Grade (Bilsky ${state.bilsky}${state.myelo === 'yes' ? ' + Mielopatia' : ''})` : `Low-Grade (Bilsky ${state.bilsky})`;
+    document.getElementById('bilskyLabel').style.color = isHighGradeN ? 'var(--danger)' : 'var(--success)';
+
+    // Árvore Decisória NOMS
+    const banner = document.getElementById('verdictBanner');
+    const tag = document.getElementById('verdictTag');
+    const title = document.getElementById('verdictTitle');
+    const desc = document.getElementById('verdictDesc');
+    const pearl = document.getElementById('pearlBox');
+
+    const needsStab = (sins >= 13) || (sins >= 7 && parseInt(document.getElementById('sinsPain').value) === 3);
+
+    if (state.sys === 'unfit') {
+      banner.style.borderLeftColor = 'var(--muted)';
+      tag.style.background = 'rgba(148, 163, 184, 0.2)';
+      tag.style.color = '#f8fafc';
+      tag.textContent = 'FILTRO SISTÊMICO (S): INAPTO PARA CIRURGIA';
+      title.textContent = 'Radioterapia Paliativa (cEBRT) + Corticoterapia + Cuidados de Suporte';
+      desc.textContent = 'Mesmo diante de compressão ou instabilidade, a reserva sistêmica proibitiva contraindica intervenção cirúrgica.';
+      pearl.innerHTML = '<strong>Decisão pelo Pilar S:</strong> O quarto pilar do NOMS existe para impedir cirurgias fúteis em pacientes com sobrevida esperada < 3 meses ou falência orgânica. Se houver dor mecânica focal sem colapso posterior grave, avaliar cimentação percutânea sob sedação leve apenas se tolerável.';
+      return;
+    }
+
+    if (isHighGradeN) {
+      if (isResistant) {
+        banner.style.borderLeftColor = 'var(--danger)';
+        tag.style.background = 'rgba(239, 68, 68, 0.2)';
+        tag.style.color = '#fca5a5';
+        tag.textContent = 'INDICAÇÃO CIRÚRGICA CLÁSSICA NOMS';
+        title.textContent = 'Cirurgia de Separação + Estabilização → Radiocirurgia (SRS) Pós-Op';
+        desc.textContent = 'Compressão medular de alto grau por tumor radiorresistente exige descompressão epidural circunferencial (margem de 2–3 mm) para viabilizar SRS ablativa.';
+        pearl.innerHTML = '<strong>Por que Separação + SRS?</strong> A cEBRT falha em tumores radiorresistentes (rim, melanoma, sarcoma, NSCLC). Porém, a SRS não pode ser aplicada com o tumor encostado na medula (risco de mielite actínica). A cirurgia cria o "fosso" de líquor e estabiliza a coluna com parafusos (preferencialmente PEEK-carbono).';
+      } else {
+        banner.style.borderLeftColor = 'var(--warning)';
+        tag.style.background = 'rgba(245, 158, 11, 0.2)';
+        tag.style.color = '#fcd34d';
+        tag.textContent = 'ALTA RADIOSSENSIBILIDADE';
+        if (needsStab) {
+          title.textContent = 'Estabilização Mecânica (SINS elevado) + cEBRT / Corticoterapia';
+          desc.textContent = 'Embora o tumor derreta com radioterapia convencional, a instabilidade mecânica (SINS ≥ 7 com dor mecânica ou ≥ 13) exige fixação.';
+          pearl.innerHTML = '<strong>Armadilha de Prova:</strong> Mieloma múltiplo e linfoma respondem dramaticamente à dexametasona e à cEBRT mesmo com Bilsky 3, dispensando descompressão aberta agressiva — <em>exceto</em> se o arcabouço ósseo estiver mecanicamente instável (SINS alto), caso em que se faz fixação percutânea ou cifoplastia.';
+        } else {
+          title.textContent = 'Radioterapia Convencional (cEBRT) de Emergência + Corticoterapia';
+          desc.textContent = 'Tumores altamente radiossensíveis (mieloma, linfoma, mama, próstata) com coluna estável (SINS ≤ 6) descomprimem o canal sem cirurgia.';
+          pearl.innerHTML = '<strong>Vantagem do NOMS:</strong> Evita morbidade cirúrgica desnecessária. Inicia-se dexametasona em alta dose e cEBRT imediata com vigilância neurológica rigorosa nas primeiras 48–72 horas.';
+        }
+      }
+    } else {
+      // Low-Grade N (Bilsky 0 - 1c, sem mielopatia)
+      const rtModal = isResistant ? 'Radiocirurgia Estereotáxica (SRS / SBRT)' : 'Radioterapia Convencional (cEBRT)';
+      if (needsStab) {
+        banner.style.borderLeftColor = 'var(--warning)';
+        tag.style.background = 'rgba(245, 158, 11, 0.2)';
+        tag.style.color = '#fcd34d';
+        tag.textContent = 'INSTABILIDADE MECÂNICA ISOLADA';
+        title.textContent = `Estabilização Percutânea / Cimentação → ${rtModal}`;
+        desc.textContent = `Não há compressão medular (Bilsky ${state.bilsky}), mas o SINS de ${sins} pts indica instabilidade mecânica que não melhora com radiação.`;
+        pearl.innerHTML = `<strong>Separação entre Dor Biológica e Mecânica:</strong> A radiação (${rtModal}) controla o tumor, mas não restaura a rigidez estrutural. Quando o SINS é ≥ 13 (ou 7–12 com dor mecânica franca ao ficar de pé), estabiliza-se primeiro (cifoplastia/vertebroplastia ou fixação MIS) e irradia-se em seguida.`;
+      } else {
+        banner.style.borderLeftColor = 'var(--success)';
+        tag.style.background = 'rgba(34, 197, 94, 0.2)';
+        tag.style.color = '#86efac';
+        tag.textContent = 'TRATAMENTO NÃO CIRÚRGICO';
+        title.textContent = `${rtModal} Isolada`;
+        desc.textContent = `Canal medular livre (Bilsky ${state.bilsky}), sem mielopatia e coluna mecanicamente estável (SINS ${sins} pts).`;
+        pearl.innerHTML = isResistant
+          ? '<strong>Controle Ablativo sem Cirurgia:</strong> Como há margem livre de líquor ao redor da medula (Bilsky 0–1c), o radioterapeuta aplica SRS de alta dose diretamente na vértebra com >90% de controle local.'
+          : '<strong>Conduta Padrão:</strong> Tumor radiossensível sem compressão medular e sem instabilidade mecânica responde de forma excelente à cEBRT ambulatorial.';
+      }
+    }
+  }
+
+  function applyPreset(type) {
+    if (type === 'sep') {
+      setBilsky('3'); setMyelo('yes'); setSys('fit');
+      document.getElementById('tumorSelect').value = 'res_rim';
+      document.getElementById('sinsLoc').value = '3';
+      document.getElementById('sinsPain').value = '3';
+      document.getElementById('sinsBone').value = '2';
+      document.getElementById('sinsAlign').value = '0';
+      document.getElementById('sinsCollapse').value = '2';
+      document.getElementById('sinsPost').value = '1';
+    } else if (type === 'myeloma') {
+      setBilsky('3'); setMyelo('no'); setSys('fit');
+      document.getElementById('tumorSelect').value = 'sens_mieloma';
+      document.getElementById('sinsLoc').value = '1';
+      document.getElementById('sinsPain').value = '1';
+      document.getElementById('sinsBone').value = '2';
+      document.getElementById('sinsAlign').value = '0';
+      document.getElementById('sinsCollapse').value = '1';
+      document.getElementById('sinsPost').value = '0';
+    } else if (type === 'srs') {
+      setBilsky('1b'); setMyelo('no'); setSys('fit');
+      document.getElementById('tumorSelect').value = 'res_melanoma';
+      document.getElementById('sinsLoc').value = '1';
+      document.getElementById('sinsPain').value = '1';
+      document.getElementById('sinsBone').value = '2';
+      document.getElementById('sinsAlign').value = '0';
+      document.getElementById('sinsCollapse').value = '1';
+      document.getElementById('sinsPost').value = '0';
+    } else if (type === 'instable') {
+      setBilsky('1a'); setMyelo('no'); setSys('fit');
+      document.getElementById('tumorSelect').value = 'sens_mama';
+      document.getElementById('sinsLoc').value = '3';
+      document.getElementById('sinsPain').value = '3';
+      document.getElementById('sinsBone').value = '2';
+      document.getElementById('sinsAlign').value = '2';
+      document.getElementById('sinsCollapse').value = '3';
+      document.getElementById('sinsPost').value = '1';
+    }
+    updateAll();
+  }
+
+  updateAll();
+</script>
+</body>
+</html>
