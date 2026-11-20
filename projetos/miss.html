@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Interativo — Planejador de Corredores MISS da Coluna</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-alt: #263349;
+    --border: #334155;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 16px; line-height: 1.45; }
+  .container { max-width: 1180px; margin: 0 auto; }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  h1 { font-size: 1.25rem; font-weight: 700; }
+  .subtitle { font-size: 0.82rem; color: var(--muted); }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preset-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; }
+  .preset-btn:hover { border-color: var(--accent); background: var(--card-alt); }
+
+  .verdict-banner { background: var(--card); border: 1px solid var(--border); border-left: 5px solid var(--success); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .verdict-tag { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; margin-bottom: 6px; }
+  .verdict-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; }
+  .verdict-desc { font-size: 0.86rem; color: var(--muted); }
+  .metrics-box { display: flex; gap: 8px; flex-wrap: wrap; }
+  .metric-pill { background: var(--bg); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; text-align: center; min-width: 92px; }
+  .metric-label { font-size: 0.68rem; color: var(--muted); font-weight: 700; }
+  .metric-val { font-size: 0.88rem; font-weight: 700; margin-top: 2px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 16px; }
+  @media (max-width: 920px) { .grid { grid-template-columns: 1fr; } .verdict-banner { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 13px; }
+  .panel-title { font-size: 0.92rem; font-weight: 700; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; display: flex; justify-content: space-between; }
+
+  .control-group { display: flex; flex-direction: column; gap: 5px; }
+  .control-label { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+  .seg-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 5px; }
+  .seg-btn { background: var(--bg); border: 1px solid var(--border); color: var(--muted); padding: 7px 6px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; }
+  .seg-btn.active { background: var(--accent); color: #0f172a; border-color: var(--accent); }
+  .seg-btn.active-warn { background: var(--warning); color: #0f172a; border-color: var(--warning); }
+  .seg-btn.active-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  select { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px 10px; border-radius: 6px; font-size: 0.84rem; }
+
+  .svg-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+  .corridor-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 550px) { .corridor-list { grid-template-columns: 1fr; } }
+  .corridor-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-size: 0.79rem; }
+  .c-head { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 3px; }
+  .badge-ok { color: var(--success); }
+  .badge-warn { color: var(--warning); }
+  .badge-no { color: var(--danger); }
+  .pearl-box { background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 11px; font-size: 0.81rem; color: #e2e8f0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>Planejador Anatômico & Biomecânico MISS da Coluna</h1>
+      <div class="subtitle">Corredores Endoscópicos, Posteriores Tubulares (Wiltse), Laterais (LLIF/OLIF) e Anteriores (ALIF)</div>
+    </div>
+    <div class="presets">
+      <button class="preset-btn" onclick="loadPreset('l5s1_hernia')">Caso 1: Hérnia L5-S1 + Crista Alta</button>
+      <button class="preset-btn" onclick="loadPreset('l4l5_teardrop')">Caso 2: Listese L4-L5 + Psoas Anterior</button>
+      <button class="preset-btn" onclick="loadPreset('l5s1_lordosis')">Caso 3: Déficit Lordose L5-S1 (ALIF)</button>
+      <button class="preset-btn" onclick="loadPreset('l4l5_bony')">Caso 4: Estenose Óssea Severa L4-L5</button>
+    </div>
+  </header>
+
+  <div class="verdict-banner" id="verdictBanner">
+    <div>
+      <span class="verdict-tag" id="verdictTag">CORREDOR IDEAL RECOMENDADO</span>
+      <div class="verdict-title" id="verdictTitle">ALIF (Anterior Retroperitoneal) + Fixação Percutânea</div>
+      <div class="verdict-desc" id="verdictDesc">Janela vascular aberta abaixo da bifurcação aortoilíaca em L5-S1 permite ressecção do LLA, cage hiperlordótico largo e descompressão indireta máxima.</div>
+    </div>
+    <div class="metrics-box">
+      <div class="metric-pill"><div class="metric-label">NÍVEL</div><div class="metric-val" id="mLevel">L5–S1</div></div>
+      <div class="metric-pill"><div class="metric-label">GANHO LORDOSE</div><div class="metric-val" id="mLordosis">15°–25°</div></div>
+      <div class="metric-pill"><div class="metric-label">ESTRUTURA CRÍTICA</div><div class="metric-val" id="mRisk" style="color:var(--warning)">Plexo Hipogást.</div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Controles Anatômicos -->
+    <div class="panel">
+      <div class="panel-title"><span>1. Parâmetros Anatômicos e Patológicos do Paciente</span></div>
+
+      <div class="control-group">
+        <div class="control-label">Nível Vertebral Alvo:</div>
+        <div class="seg-group" id="levelGroup">
+          <button class="seg-btn" data-val="L2-L3" onclick="setOpt('level','L2-L3')">L2–L3</button>
+          <button class="seg-btn" data-val="L3-L4" onclick="setOpt('level','L3-L4')">L3–L4</button>
+          <button class="seg-btn" data-val="L4-L5" onclick="setOpt('level','L4-L5')">L4–L5</button>
+          <button class="seg-btn active" data-val="L5-S1" onclick="setOpt('level','L5-S1')">L5–S1</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">Objetivo Cirúrgico / Patologia Principal:</div>
+        <select id="pathSelect" onchange="updateSim()">
+          <option value="hernia_foram">Hérnia Discal Foraminal / Extraforaminal (Sem instabilidade)</option>
+          <option value="hernia_cent">Hérnia Discal Centrolateral / Migrada (Sem instabilidade)</option>
+          <option value="listhesis_ind" selected>Espondilolistese / Estenose Foraminal (Requer fusão + descompressão indireta)</option>
+          <option value="stenosis_bony">Estenose Central Óssea Severa / Ligamento Amarelo Calcificado + Instabilidade</option>
+          <option value="lordosis_def">Déficit Severo de Lordose Lombar Baixa (Restauração LDI / GAP Score)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">Altura da Crista Ilíaca (Restrição Lateral):</div>
+        <div class="seg-group" id="iliacGroup">
+          <button class="seg-btn" data-val="low" onclick="setOpt('iliac','low')">Baixa (Abaixo de L4-L5)</button>
+          <button class="seg-btn active-danger" data-val="high" onclick="setOpt('iliac','high')">Alta (Bloqueia L4-L5/L5-S1)</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">Morfologia do Músculo Psoas & Plexo Lombar (RM Axial):</div>
+        <div class="seg-group" id="psoasGroup">
+          <button class="seg-btn active" data-val="normal" onclick="setOpt('psoas','normal')">Psoas Posterior / Normal</button>
+          <button class="seg-btn" data-val="teardrop" onclick="setOpt('psoas','teardrop')">Psoas "Em Gota" (Anteriorizado)</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">Janela Vascular Anterior (Bifurcação Aortoilíaca / Corredor Pré-Psoas):</div>
+        <div class="seg-group" id="vascGroup">
+          <button class="seg-btn active" data-val="open" onclick="setOpt('vasc','open')">Janela Livre / Segura</button>
+          <button class="seg-btn" data-val="calcified" onclick="setOpt('vasc','calcified')">Calcificação / Aderência Vascular</button>
+        </div>
+      </div>
+
+      <div class="panel-title" style="margin-top:4px;"><span>2. Viabilidade por Técnica MISS</span></div>
+      <div class="corridor-list" id="corridorCards"></div>
+    </div>
+
+    <!-- Visualizador Axial Dinâmico -->
+    <div class="panel">
+      <div class="panel-title"><span>Mapa Axial Interativo — Trajetória e Estruturas de Risco</span></div>
+      <div class="svg-box">
+        <svg id="missSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 290" width="100%">
+          <!-- Fundo e rótulos cardinais -->
+          <text x="210" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#94a3b8">ANTERIOR (Retroperitônio / Abdome)</text>
+          <text x="210" y="282" text-anchor="middle" font-size="11" font-weight="bold" fill="#94a3b8">POSTERIOR (Linha Média / Multífidos)</text>
+          <text x="28" y="150" text-anchor="middle" font-size="10" fill="#64748b">DIR</text>
+          <text x="392" y="150" text-anchor="middle" font-size="10" fill="#64748b">ESQ</text>
+
+          <!-- Crista Ilíaca Esquerda (Muro Ósseo Lateral quando alta ou L5-S1) -->
+          <path id="iliacWall" d="M 345 110 Q 375 155 345 205" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round" opacity="0.85"/>
+          <text id="iliacLabel" x="366" y="102" text-anchor="middle" font-size="10" font-weight="bold" fill="#ef4444">Crista Ilíaca</text>
+
+          <!-- Disco / Corpo Vertebral -->
+          <ellipse cx="210" cy="148" rx="54" ry="38" fill="#334155" stroke="#94a3b8" stroke-width="2"/>
+          <text x="210" y="152" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Disco / Corpo</text>
+
+          <!-- Elementos Posteriores e Canal -->
+          <path d="M 164 166 L 154 205 L 210 238 L 266 205 L 256 166" fill="none" stroke="#94a3b8" stroke-width="3"/>
+          <circle cx="210" cy="196" r="16" fill="#0284c7" fill-opacity="0.35" stroke="#38bdf8" stroke-width="1.5"/>
+
+          <!-- Músculos Paravertebrais Posteriores -->
+          <ellipse cx="182" cy="235" rx="22" ry="14" fill="#22c55e" fill-opacity="0.18" stroke="#22c55e" stroke-width="1"/>
+          <ellipse cx="238" cy="235" rx="22" ry="14" fill="#22c55e" fill-opacity="0.18" stroke="#22c55e" stroke-width="1"/>
+
+          <!-- Vasos Anteriores -->
+          <circle id="veinCircle" cx="184" cy="98" r="12" fill="#3b82f6" fill-opacity="0.4" stroke="#3b82f6" stroke-width="2"/>
+          <text x="166" y="96" text-anchor="end" font-size="9" fill="#60a5fa" font-weight="bold">V. Ilíaca/VCI</text>
+          <circle id="artCircle" cx="236" cy="98" r="11" fill="#ef4444" fill-opacity="0.4" stroke="#ef4444" stroke-width="2"/>
+          <text x="252" y="92" text-anchor="start" font-size="9" fill="#f87171" font-weight="bold">Aorta/Ilíaca</text>
+
+          <!-- Psoas Direito e Esquerdo -->
+          <ellipse cx="134" cy="150" rx="25" ry="34" fill="#475569" fill-opacity="0.4" stroke="#64748b" stroke-width="1.5"/>
+          <ellipse id="psoasLeft" cx="286" cy="150" rx="25" ry="34" fill="#475569" fill-opacity="0.4" stroke="#64748b" stroke-width="1.5"/>
+          <!-- Plexo Lombar no Psoas Esquerdo -->
+          <circle id="plexusDot" cx="294" cy="160" r="6" fill="#f59e0b" stroke="#0f172a" stroke-width="1.5"/>
+          <text id="plexusLabel" x="286" y="196" text-anchor="middle" font-size="9" fill="#fbbf24" font-weight="bold">Psoas + Plexo</text>
+
+          <!-- Trajetória Cirúrgica Recomendada (Feixe Dinâmico) -->
+          <line id="trajLine" x1="210" y1="32" x2="210" y2="108" stroke="#22c55e" stroke-width="6" stroke-linecap="round"/>
+          <circle id="trajTip" cx="210" cy="108" r="6" fill="#22c55e"/>
+          <rect id="trajBadge" x="135" y="26" width="150" height="20" rx="4" fill="#0f172a" stroke="#22c55e" stroke-width="1.5"/>
+          <text id="trajText" x="210" y="40" text-anchor="middle" font-size="10" font-weight="bold" fill="#22c55e">Corredor ALIF (Linha Média)</text>
+        </svg>
+      </div>
+
+      <div class="pearl-box" id="pearlBox">
+        <strong>Por que este corredor vence?</strong><br>
+        Em L5–S1, a crista ilíaca bloqueia o acesso lateral puro (LLIF), e a bifurcação dos grandes vasos oferece uma janela triangular natural na linha média. O ALIF permite ressecar o ligamento longitudinal anterior, implantar um cage hiperlordótico largo e descomprimir indiretamente os forames sem violar os músculos multífidos.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let cfg = {
+    level: 'L5-S1',
+    iliac: 'high',
+    psoas: 'normal',
+    vasc: 'open'
+  };
+
+  function setOpt(key, val) {
+    cfg[key] = val;
+    const map = { level: 'levelGroup', iliac: 'iliacGroup', psoas: 'psoasGroup', vasc: 'vascGroup' };
+    document.querySelectorAll(`#${map[key]} .seg-btn`).forEach(btn => {
+      btn.className = 'seg-btn';
+      if (btn.dataset.val === val) {
+        if (val === 'high' || val === 'teardrop' || val === 'calcified') btn.classList.add('active-warn');
+        else btn.classList.add('active');
+      }
+    });
+    updateSim();
+  }
+
+  function updateSim() {
+    const path = document.getElementById('pathSelect').value;
+    const isL5S1 = cfg.level === 'L5-S1';
+    const isL4L5 = cfg.level === 'L4-L5';
+
+    // Atualizar anatomia SVG (Crista, Psoas, Vasos)
+    const iliacWall = document.getElementById('iliacWall');
+    const iliacLabel = document.getElementById('iliacLabel');
+    const showIliacBlock = isL5S1 || (isL4L5 && cfg.iliac === 'high');
+    iliacWall.setAttribute('opacity', showIliacBlock ? '0.9' : '0.15');
+    iliacLabel.setAttribute('opacity', showIliacBlock ? '1' : '0.25');
+
+    const psoasLeft = document.getElementById('psoasLeft');
+    const plexusDot = document.getElementById('plexusDot');
+    if (cfg.psoas === 'teardrop') {
+      psoasLeft.setAttribute('cy', '132');
+      psoasLeft.setAttribute('rx', '28');
+      plexusDot.setAttribute('cy', '138');
+      plexusDot.setAttribute('cx', '284');
+    } else {
+      psoasLeft.setAttribute('cy', '150');
+      psoasLeft.setAttribute('rx', '25');
+      plexusDot.setAttribute('cy', '160');
+      plexusDot.setAttribute('cx', '294');
+    }
+
+    const vein = document.getElementById('veinCircle');
+    const art = document.getElementById('artCircle');
+    if (isL5S1) {
+      // Vasos já bifurcados lateralmente abrindo janela ALIF
+      vein.setAttribute('cx', '172');
+      art.setAttribute('cx', '248');
+    } else {
+      // Vasos mais próximos na linha média acima de L5-S1
+      vein.setAttribute('cx', '188');
+      art.setAttribute('cx', '230');
+    }
+
+    // Avaliar cada técnica
+    let best = { code: '', title: '', desc: '', lordosis: '', risk: '', pearl: '', coords: [210,32,210,108], label: '' };
+    let cards = [];
+
+    if (path === 'hernia_foram') {
+      if (isL5S1 && cfg.iliac === 'high') {
+        best = {
+          title: 'Endoscopia Interlaminar (PEID) ou Acesso Tubular Wiltse',
+          desc: 'A crista ilíaca alta bloqueia o ângulo lateral do Triângulo de Kambin em L5-S1; a via posterior interlaminar endoscópica ou tubular é mais segura.',
+          lordosis: 'Preserva (0°)',
+          risk: 'Raiz S1 / Dura',
+          pearl: 'No nível L5-S1, homens frequentemente possuem crista ilíaca alta que impede o acesso endoscópico transforaminal sem fresagem extensa do ilíaco. A janela interlaminar em L5-S1 é ampla e permite remoção direta com trauma mínimo.',
+          coords: [248, 262, 224, 202],
+          label: 'Endoscopia Interlaminar'
+        };
+      } else {
+        best = {
+          title: 'Endoscopia Transforaminal (PELD — Triângulo de Kambin)',
+          desc: 'Acesso lateral direto no forame sob anestesia local/sedação, removendo a hérnia foraminal sem violar o canal nem os multífidos.',
+          lordosis: 'Preserva (0°)',
+          risk: 'GRD (Raiz Emergente)',
+          pearl: 'O Triângulo de Kambin permite alcançar hérnias foraminais e extraforaminais sem ressecar a faceta articular (evitando instabilidade iatrogênica e necessidade de artrodese).',
+          coords: [338, 222, 258, 174],
+          label: 'Endoscopia Transforaminal'
+        };
+      }
+    } else if (path === 'hernia_cent') {
+      if (isL5S1 || isL4L5) {
+        best = {
+          title: 'Endoscopia Interlaminar (PEID) ou Microdiscectomia Tubular',
+          desc: 'Acesso posterior mininvasivo através da janela interlaminar proporciona visualização direta do saco dural e da axila/ombro da raiz.',
+          lordosis: 'Preserva (0°)',
+          risk: 'Raiz Transeunte / Dura',
+          pearl: 'Para hérnias centrolaterais ou migradas caudalmente nos níveis lombares baixos, a janela interlaminar oferece ângulo de trabalho direto sobre o fragmento sequestrado.',
+          coords: [245, 265, 222, 202],
+          label: 'Endoscopia Interlaminar'
+        };
+      } else {
+        best = {
+          title: 'Endoscopia Transforaminal (PELD) ou Tubular Paramédico',
+          desc: 'Nos níveis lombares altos (L2-L3/L3-L4), as lâminas são estreitas e o saco dural ocupa quase todo o canal; a via transforaminal evita retração dural.',
+          lordosis: 'Preserva (0°)',
+          risk: 'GRD Emergente',
+          pearl: 'Em níveis lombares superiores, a retração do saco dural por trás tem maior risco neurológico; entrar lateralmente pelo forame permite acessar o disco sem manipular a cauda equina.',
+          coords: [338, 222, 258, 174],
+          label: 'Endoscopia Transforaminal'
+        };
+      }
+    } else if (path === 'stenosis_bony') {
+      best = {
+        title: 'MIS-TLIF (Plano de Wiltse + Descompressão Direta Bilateral "Over-the-Top")',
+        desc: 'Estenose óssea central severa ou ligamento amarelo calcificado NÃO responde à descompressão indireta; exige ressecção direta via tubo posterior.',
+        lordosis: '5°–10°',
+        risk: 'Raiz / Dura / Subsidência',
+        pearl: 'Regra de ouro: técnicas anteriores/laterais (ALIF/LLIF/OLIF) dependem da descompressão indireta pelo tensionamento do ligamento amarelo. Se há hipertrofia facetária óssea travada ou calcificação posterior, a descompressão direta por MIS-TLIF é obrigatória.',
+        coords: [298, 255, 244, 176],
+        label: 'MIS-TLIF (Descomp. Direta)'
+      };
+    } else {
+      // Fusão com descompressão indireta ou ganho de lordose
+      if (isL5S1) {
+        if (cfg.vasc === 'open') {
+          best = {
+            title: 'ALIF (Anterior Retroperitoneal) + Parafusos Percutâneos',
+            desc: 'Abaixo da bifurcação aortoilíaca em L5-S1, o ALIF oferece o maior ganho de lordose distal (15°–25°), maior área de fusão e descompressão indireta máxima.',
+            lordosis: '15°–25°',
+            risk: 'Plexo Hipogástrico / Vasos',
+            pearl: 'Em L5-S1, a crista ilíaca bloqueia o LLIF lateral, e a janela entre os vasos ilíacos favorece o ALIF. Usar dissecção romba (sem monopolar na frente de L5-S1) preserva o plexo hipogástrico superior.',
+            coords: [210, 48, 210, 108],
+            label: 'ALIF (Linha Média)'
+          };
+        } else {
+          best = {
+            title: 'MIS-TLIF em L5-S1 (Alternativa Segura à Calcificação Vascular)',
+            desc: 'Com calcificação aterosclerótica grave ou aderência vascular anterior em L5-S1, evita-se a mobilização dos vasos ilíacos optando pelo MIS-TLIF posterior.',
+            lordosis: '6°–12°',
+            risk: 'Raiz L5 / S1',
+            pearl: 'Nunca force um acesso anterior sobre vasos ilíacos calcificados e friáveis; o MIS-TLIF resolve L5-S1 por trás com segurança vascular total.',
+            coords: [298, 255, 244, 176],
+            label: 'MIS-TLIF (Wiltse)'
+          };
+        }
+      } else {
+        // L2-L3, L3-L4 ou L4-L5
+        if (cfg.psoas === 'teardrop' || (isL4L5 && cfg.iliac === 'high')) {
+          if (cfg.vasc === 'open') {
+            best = {
+              title: 'OLIF (Corredor Oblíquo Pré-Psoas) + Fixação Percutânea',
+              desc: 'O psoas anteriorizado ("em gota") desloca o plexo lombar para a frente e a crista alta bloqueia o flanco; o corredor oblíquo pré-psoas contorna ambos!',
+              lordosis: '10°–18°',
+              risk: 'Cadeia Simpática / Ureter',
+              pearl: 'O OLIF entra no corredor natural entre a aorta/ilíaca e a borda anterior do psoas, poupando o plexo lombar e contornando a crista ilíaca alta em L4-L5.',
+              coords: [322, 68, 252, 122],
+              label: 'OLIF (Pré-Psoas)'
+            };
+          } else {
+            best = {
+              title: 'MIS-TLIF (Plano de Wiltse) + Parafusos Percutâneos',
+              desc: 'Com psoas anteriorizado (risco de plexo no LLIF) e calcificação vascular (risco no OLIF/ALIF), o corredor posterior MIS-TLIF é o mais seguro.',
+              lordosis: '6°–10°',
+              risk: 'Raiz Emergente',
+              pearl: 'Quando os corredores anteriores e laterais apresentam risco anatômico elevado simultâneo, o MIS-TLIF oferece acesso confiável sem manipulação retroperitoneal.',
+              coords: [298, 255, 244, 176],
+              label: 'MIS-TLIF (Wiltse)'
+            };
+          }
+        } else {
+          best = {
+            title: 'LLIF / XLIF (Lateral Transpsoas) ou OLIF + Fixação Percutânea',
+            desc: 'Anatomia favorável do psoas e crista ilíaca livre permitem acesso lateral de grande porte, restauração robusta de lordose e descompressão indireta.',
+            lordosis: '10°–18°',
+            risk: 'Plexo Lombar (EMG Obrig.)',
+            pearl: 'No LLIF transpsoas (especialmente em L4-L5), a neuromonitorização direcional (EMG) e o tempo curto de retração do psoas (< 20 min) protegem o nervo femoral.',
+            coords: [358, 148, 266, 148],
+            label: 'LLIF (Transpsoas)'
+          };
+        }
+      }
+    }
+
+    // Atualizar Banner e SVG Trajetória
+    document.getElementById('verdictTitle').textContent = best.title;
+    document.getElementById('verdictDesc').textContent = best.desc;
+    document.getElementById('mLevel').textContent = cfg.level;
+    document.getElementById('mLordosis').textContent = best.lordosis;
+    document.getElementById('mRisk').textContent = best.risk;
+    document.getElementById('pearlBox').innerHTML = `<strong>Raciocínio Anatômico & Biomecânico:</strong><br>${best.pearl}`;
+
+    const tLine = document.getElementById('trajLine');
+    const tTip = document.getElementById('trajTip');
+    const tText = document.getElementById('trajText');
+    const tBadge = document.getElementById('trajBadge');
+    tLine.setAttribute('x1', best.coords[0]);
+    tLine.setAttribute('y1', best.coords[1]);
+    tLine.setAttribute('x2', best.coords[2]);
+    tLine.setAttribute('y2', best.coords[3]);
+    tTip.setAttribute('cx', best.coords[2]);
+    tTip.setAttribute('cy', best.coords[3]);
+    tText.textContent = best.label;
+
+    const bx = Math.min(Math.max(best.coords[0] - 75, 10), 260);
+    const by = best.coords[1] > 180 ? 248 : 24;
+    tBadge.setAttribute('x', bx);
+    tBadge.setAttribute('y', by);
+    tText.setAttribute('x', bx + 75);
+    tText.setAttribute('y', by + 14);
+
+    // Cards comparativos das 4 grandes famílias
+    const statusList = [
+      {
+        name: 'ALIF (Anterior)',
+        status: isL5S1 && cfg.vasc === 'open' ? 'Ideal (L5-S1)' : (cfg.vasc === 'calcified' ? 'Contraindicado (Vasos)' : (!isL5S1 ? 'Possível (Mobilizar Vasos)' : 'Limitado')),
+        cls: isL5S1 && cfg.vasc === 'open' ? 'badge-ok' : (cfg.vasc === 'calcified' ? 'badge-no' : 'badge-warn'),
+        note: isL5S1 ? 'Janela natural abaixo da bifurcação; máximo ganho de lordose.' : 'Exige mobilização da veia ilíaca comum esquerda.'
+      },
+      {
+        name: 'LLIF / XLIF (Transpsoas)',
+        status: isL5S1 ? 'Bloqueado (Ilíaco)' : (cfg.psoas === 'teardrop' ? 'Alto Risco (Plexo)' : (isL4L5 && cfg.iliac === 'high' ? 'Limitado (Crista)' : 'Excelente')),
+        cls: isL5S1 ? 'badge-no' : (cfg.psoas === 'teardrop' || (isL4L5 && cfg.iliac === 'high') ? 'badge-warn' : 'badge-ok'),
+        note: isL5S1 ? 'Crista ilíaca impede acesso lateral direto.' : (cfg.psoas === 'teardrop' ? 'Psoas anteriorizado expõe o nervo femoral.' : 'Requer EMG direcional durante travessia do psoas.')
+      },
+      {
+        name: 'OLIF (Pré-Psoas)',
+        status: cfg.vasc === 'calcified' ? 'Risco Vascular' : 'Viável (Poupa Psoas)',
+        cls: cfg.vasc === 'calcified' ? 'badge-no' : 'badge-ok',
+        note: 'Passa entre aorta/ilíaca e psoas; evita lesão do plexo lombar.'
+      },
+      {
+        name: 'MIS-TLIF / Endoscopia',
+        status: 'Sempre Acessível',
+        cls: 'badge-ok',
+        note: path === 'stenosis_bony' ? 'Único capaz de descomprimir diretamente estenose óssea.' : 'Via posterior (Wiltse / Interlaminar / Kambin).'
+      }
+    ];
+
+    document.getElementById('corridorCards').innerHTML = statusList.map(c => `
+      <div class="corridor-card">
+        <div class="c-head"><span>${c.name}</span><span class="${c.cls}">${c.status}</span></div>
+        <div style="color:var(--muted); font-size:0.75rem;">${c.note}</div>
+      </div>
+    `).join('');
+  }
+
+  function loadPreset(p) {
+    if (p === 'l5s1_hernia') {
+      setOpt('level', 'L5-S1'); setOpt('iliac', 'high'); setOpt('psoas', 'normal'); setOpt('vasc', 'open');
+      document.getElementById('pathSelect').value = 'hernia_foram';
+    } else if (p === 'l4l5_teardrop') {
+      setOpt('level', 'L4-L5'); setOpt('iliac', 'high'); setOpt('psoas', 'teardrop'); setOpt('vasc', 'open');
+      document.getElementById('pathSelect').value = 'listhesis_ind';
+    } else if (p === 'l5s1_lordosis') {
+      setOpt('level', 'L5-S1'); setOpt('iliac', 'high'); setOpt('psoas', 'normal'); setOpt('vasc', 'open');
+      document.getElementById('pathSelect').value = 'lordosis_def';
+    } else if (p === 'l4l5_bony') {
+      setOpt('level', 'L4-L5'); setOpt('iliac', 'low'); setOpt('psoas', 'normal'); setOpt('vasc', 'open');
+      document.getElementById('pathSelect').value = 'stenosis_bony';
+    }
+    updateSim();
+  }
+
+  updateSim();
+</script>
+</body>
+</html>
