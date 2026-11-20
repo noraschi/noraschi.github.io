@@ -138,59 +138,62 @@
     <div class="card">
       <div class="card-h"><span>Modelo Biomecânico Sagital (Tempo Real)</span><span id="pjkAlert" style="font-size:0.75rem; color:var(--amber);"></span></div>
       <div class="svg-wrap">
-        <svg id="spineSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 360" width="100%">
-          <!-- Grade e Referências -->
-          <rect x="12" y="8" width="436" height="344" rx="8" fill="#070c17" stroke="#1e293b"/>
+        <svg id="spineSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 400" width="100%">
+          <rect x="12" y="8" width="436" height="384" rx="8" fill="#070c17" stroke="#1e293b"/>
           <text x="26" y="26" font-size="10" fill="#64748b" font-weight="bold">← POSTERIOR</text>
           <text x="434" y="26" text-anchor="end" font-size="10" fill="#64748b" font-weight="bold">ANTERIOR →</text>
 
-          <!-- Linha vertical de referência passando pelo eixo bicoxofemoral -->
-          <line id="hipPlumb" x1="285" y1="36" x2="285" y2="335" stroke="#334155" stroke-width="1.5" stroke-dasharray="5,4"/>
-          <text id="plumbLbl" x="290" y="332" font-size="9.5" fill="#64748b">Vertical do Eixo Femoral</text>
+          <!-- Vertical pelo eixo bicoxofemoral -->
+          <line id="hipPlumb" x1="300" y1="36" x2="300" y2="372" stroke="#334155" stroke-width="1.5" stroke-dasharray="5,4"/>
+          <text id="plumbLbl" x="306" y="386" font-size="9.5" fill="#64748b">Vertical do Eixo Femoral</text>
 
-          <!-- Linha horizontal passando por S1 -->
-          <line id="s1Horiz" x1="155" y1="242" x2="355" y2="242" stroke="#475569" stroke-width="1" stroke-dasharray="3,3"/>
+          <!-- Horizontal por S1 -->
+          <line id="s1Horiz" x1="150" y1="288" x2="350" y2="288" stroke="#475569" stroke-width="1" stroke-dasharray="3,3"/>
 
-          <!-- Contorno pélvico esquemático (anterior à direita) -->
-          <path id="pelvisContour" d="M 225 225 C 205 255, 235 288, 285 292 C 325 288, 325 258, 285 242" fill="none" stroke="#64748b" stroke-width="2"/>
+          <!-- Contorno pélvico esquemático -->
+          <path id="pelvisContour" d="" fill="none" stroke="#64748b" stroke-width="2"/>
 
-          <!-- Eixo Bicoxofemoral (anterior) -->
-          <circle id="hipOuter" cx="285" cy="292" r="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
-          <circle id="hipInner" cx="285" cy="292" r="4" fill="#38bdf8"/>
-          <text id="hipLbl" x="285" y="318" text-anchor="middle" font-size="10" font-weight="bold" fill="#38bdf8">Eixo Bicoxofemoral</text>
+          <!-- Linha GSA (eixo femoral → C2) -->
+          <line id="gsaLine" x1="300" y1="336" x2="300" y2="60" stroke="#a78bfa" stroke-width="1.2" stroke-dasharray="2,4" opacity="0.7"/>
 
-          <!-- Linha PT (S1 midpoint até Eixo Bicoxofemoral) -->
-          <line id="ptLine" x1="235" y1="242" x2="285" y2="292" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,2"/>
+          <!-- Eixo bicoxofemoral (anterior e inferior a S1) -->
+          <circle id="hipOuter" cx="300" cy="336" r="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
+          <circle id="hipInner" cx="300" cy="336" r="4" fill="#38bdf8"/>
+          <text id="hipLbl" x="300" y="362" text-anchor="middle" font-size="10" font-weight="bold" fill="#38bdf8">Eixo Bicoxofemoral</text>
 
-          <!-- Platô Sacral S1: vai de ântero-inferior (direita/baixo) para póstero-superior (esquerda/cima) -->
-          <line id="s1Plate" x1="205" y1="218" x2="265" y2="266" stroke="#f59e0b" stroke-width="6" stroke-linecap="round"/>
-          <text id="s1Lbl" x="195" y="210" text-anchor="end" font-size="11" font-weight="bold" fill="#f59e0b">S1</text>
+          <!-- Linha PT (centro de S1 → eixo bicoxofemoral) -->
+          <line id="ptLine" x1="270" y1="288" x2="300" y2="336" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,2"/>
 
-          <!-- Curvas da Coluna:
-               1) Lordose Lombar Baixa L4-S1 (verde esmeralda, ápice/concavidade posterior -> convexa para anterior/direita)
-               2) Lordose Lombar Alta L1-L4 (azul celeste, convexa para anterior/direita)
-               3) Cifose Torácica L1-T12 (violeta/branco, convexa para posterior/esquerda)
-               4) Lordose Cervical T12-C7 (ciano/branco, convexa para anterior/direita até C7) -->
-          <path id="pathL4S1" d="M 235 242 Q 265 215 255 186" fill="none" stroke="#10b981" stroke-width="5.5" stroke-linecap="round"/>
-          <path id="pathL1L4" d="M 255 186 Q 272 156 254 128" fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
-          <path id="pathThoracic" d="M 254 128 Q 222 96 244 66" fill="none" stroke="#a78bfa" stroke-width="5" stroke-linecap="round"/>
-          <path id="pathCervical" d="M 244 66 Q 262 46 256 32" fill="none" stroke="#f8fafc" stroke-width="4" stroke-linecap="round"/>
+          <!-- Platô sacral: ântero-inferior (direita/baixo) → póstero-superior (esquerda/cima) -->
+          <line id="s1Plate" x1="240" y1="270" x2="300" y2="306" stroke="#f59e0b" stroke-width="6" stroke-linecap="round"/>
+          <text id="s1Lbl" x="232" y="264" text-anchor="end" font-size="11" font-weight="bold" fill="#f59e0b">S1</text>
 
-          <!-- Marcadores Anatômicos -->
-          <circle id="ptL4" cx="255" cy="186" r="4.5" fill="#10b981"/>
-          <text id="lblL4" x="272" y="189" font-size="10" font-weight="bold" fill="#10b981">L4</text>
+          <!-- Curvas: lordose L4–S1 e L1–L4 (ápice anterior), cifose torácica (ápice posterior), lordose cervical (ápice anterior) -->
+          <path id="pathL4S1" d="" fill="none" stroke="#10b981" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path id="pathL1L4" d="" fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path id="pathThoracic" d="" fill="none" stroke="#a78bfa" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path id="pathCervical" d="" fill="none" stroke="#f8fafc" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 
-          <circle id="ptL1" cx="254" cy="128" r="4.5" fill="#38bdf8"/>
-          <text id="lblL1" x="270" y="131" font-size="10" font-weight="bold" fill="#38bdf8">L1</text>
+          <!-- Marcadores -->
+          <circle id="ptL4" cx="0" cy="0" r="4.5" fill="#10b981"/>
+          <text id="lblL4" x="0" y="0" font-size="10" font-weight="bold" fill="#10b981">L4</text>
 
-          <circle id="ptT12" cx="244" cy="66" r="4.5" fill="#a78bfa"/>
-          <text id="lblT12" x="210" y="69" font-size="10" font-weight="bold" fill="#a78bfa">T12</text>
+          <circle id="ptL1" cx="0" cy="0" r="4.5" fill="#38bdf8"/>
+          <text id="lblL1" x="0" y="0" font-size="10" font-weight="bold" fill="#38bdf8">L1</text>
 
-          <circle id="ptC7" cx="256" cy="32" r="6" fill="#f8fafc"/>
-          <text id="lblC7" x="268" y="35" font-size="11" font-weight="bold" fill="#f8fafc">C7</text>
+          <circle id="ptT12" cx="0" cy="0" r="4.5" fill="#a78bfa"/>
+          <text id="lblT12" x="0" y="0" font-size="10" font-weight="bold" fill="#a78bfa">T12</text>
 
-          <!-- Indicador PJK no topo -->
-          <circle id="pjkRing" cx="244" cy="66" r="13" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="3,2" opacity="0"/>
+          <circle id="ptC7" cx="0" cy="0" r="6" fill="#f8fafc"/>
+          <text id="lblC7" x="0" y="0" font-size="11" font-weight="bold" fill="#f8fafc">C7</text>
+
+          <circle id="ptC2" cx="0" cy="0" r="3.5" fill="#f8fafc"/>
+          <text id="lblC2" x="0" y="0" font-size="9.5" fill="#94a3b8">C2</text>
+
+          <text id="tkInfo" x="26" y="380" font-size="10" fill="#a78bfa"></text>
+
+          <!-- Indicador PJK -->
+          <circle id="pjkRing" cx="0" cy="0" r="13" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="3,2" opacity="0"/>
           <text id="pjkText" x="155" y="48" font-size="10" font-weight="bold" fill="#ef4444" opacity="0">⚠ Estresse PJK</text>
         </svg>
         <div class="legend">
@@ -247,6 +250,36 @@
       sPI.value = 64; sSS.value = 26; sLL.value = 32; sL4S1.value = 12; sGSA.value = 32; sAge.value = 71;
     }
     calc();
+  }
+
+  /* ===== Geometria sagital (anterior = +x / direita; posterior = −x / esquerda) =====
+     Ângulo da tangente medido a partir da vertical (+ = inclinado para anterior).
+     Subindo pela coluna: lordose = tangente gira para posterior (Δ<0), ápice anterior;
+     cifose = tangente gira para anterior (Δ>0), ápice posterior. */
+  const DEG = Math.PI / 180;
+  function seg(x, y, th, delta, len, n = 30) {
+    const pts = [[x, y]];
+    const ds = len / n;
+    const f = t => t - Math.sin(2 * Math.PI * t) / (2 * Math.PI);
+    for (let i = 1; i <= n; i++) {
+      const a = th + delta * f((i - 0.5) / n);
+      x += Math.sin(a) * ds;
+      y -= Math.cos(a) * ds;
+      pts.push([x, y]);
+    }
+    return { pts, th: th + delta };
+  }
+  const pathD = a => 'M ' + a.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L ');
+
+  function buildSpine(s1x, s1y, SS, LL, L4S1, TK, CL) {
+    const lumLow = seg(s1x, s1y, SS * DEG, -L4S1 * DEG, 32);                 // S1 → L4
+    const e1 = lumLow.pts[lumLow.pts.length - 1];
+    const lumUp = seg(e1[0], e1[1], lumLow.th, -(LL - L4S1) * DEG, 48);      // L4 → L1
+    const e2 = lumUp.pts[lumUp.pts.length - 1];
+    const tor = seg(e2[0], e2[1], lumUp.th, TK * DEG, 110);                  // L1 → T1 (cifose)
+    const e3 = tor.pts[tor.pts.length - 1];
+    const cer = seg(e3[0], e3[1], tor.th, -CL * DEG, 50);                    // T1 → C2 (lordose cervical)
+    return { lumLow, lumUp, tor, cer };
   }
 
   function calc() {
@@ -403,103 +436,67 @@
     }
     document.getElementById('adviceBox').innerHTML = adv;
 
-    // Atualização Vetorial SVG (Anterior à direita, Posterior à esquerda)
-    // Eixo bicoxofemoral à frente (x = 305, y = 294)
-    const hipX = 305;
-    const hipY = 294;
-    document.getElementById('hipPlumb').setAttribute('x1', hipX);
-    document.getElementById('hipPlumb').setAttribute('x2', hipX);
-    document.getElementById('plumbLbl').setAttribute('x', hipX + 6);
-    document.getElementById('hipOuter').setAttribute('cx', hipX);
-    document.getElementById('hipOuter').setAttribute('cy', hipY);
-    document.getElementById('hipInner').setAttribute('cx', hipX);
-    document.getElementById('hipInner').setAttribute('cy', hipY);
-    document.getElementById('hipLbl').setAttribute('x', hipX);
-    document.getElementById('hipLbl').setAttribute('y', hipY + 24);
+    /* ================= GRÁFICO SAGITAL (corrigido) =================
+       Anterior = direita. Cabeça femoral anterior e inferior a S1.
+       Platô sacral: ântero-inferior → póstero-superior. */
+    const hipX = 300, hipY = 336, Ls = 50;
+    const set = (id, o) => { const el = document.getElementById(id); for (const k in o) el.setAttribute(k, typeof o[k] === 'number' ? o[k].toFixed(1) : o[k]); };
 
-    // Platô S1: vai de ântero-inferior (direita/baixo) para póstero-superior (esquerda/cima)
-    // Quanto maior o SS, mais inclinada fica a rampa (menor y anterior, maior y posterior)
-    const ssRad = Math.min(Math.max((SS * Math.PI) / 180, 0.12), 1.05);
-    const s1MidX = hipX - 48 + Math.sin((PT * Math.PI) / 180) * 35;
-    const s1MidY = hipY - 52;
-    const halfLen = 34;
-    const postX = s1MidX - Math.cos(ssRad) * halfLen;
-    const postY = s1MidY - Math.sin(ssRad) * halfLen;
-    const antX = s1MidX + Math.cos(ssRad) * halfLen;
-    const antY = s1MidY + Math.sin(ssRad) * halfLen;
+    // Centro de S1: posterior e superior ao eixo femoral (PT = ângulo vertical → linha eixo–S1)
+    const s1x = hipX - Math.sin(PT * DEG) * Ls;
+    const s1y = hipY - Math.cos(PT * DEG) * Ls;
 
-    const s1El = document.getElementById('s1Plate');
-    s1El.setAttribute('x1', postX.toFixed(1));
-    s1El.setAttribute('y1', postY.toFixed(1));
-    s1El.setAttribute('x2', antX.toFixed(1));
-    s1El.setAttribute('y2', antY.toFixed(1));
+    // Platô: lado anterior mais baixo, lado posterior mais alto (inclinação = SS)
+    const ssRad = SS * DEG, half = 30;
+    const postX = s1x - Math.cos(ssRad) * half, postY = s1y - Math.sin(ssRad) * half;
+    const antX = s1x + Math.cos(ssRad) * half, antY = s1y + Math.sin(ssRad) * half;
+    set('s1Plate', { x1: postX, y1: postY, x2: antX, y2: antY });
+    set('s1Lbl', { x: postX - 8, y: postY - 4 });
+    set('s1Horiz', { x1: s1x - 90, x2: s1x + 90, y1: s1y, y2: s1y });
+    set('ptLine', { x1: s1x, y1: s1y, x2: hipX, y2: hipY });
+    set('hipPlumb', { x1: hipX, x2: hipX });
+    set('plumbLbl', { x: hipX + 6 });
+    set('hipOuter', { cx: hipX, cy: hipY }); set('hipInner', { cx: hipX, cy: hipY });
+    set('hipLbl', { x: hipX, y: hipY + 28 });
+    set('pelvisContour', { d: `M ${postX.toFixed(1)} ${postY.toFixed(1)} C ${(postX - 22).toFixed(1)} ${(postY + 50).toFixed(1)} ${(hipX - 52).toFixed(1)} ${(hipY + 8).toFixed(1)} ${(hipX - 14).toFixed(1)} ${(hipY + 8).toFixed(1)}` });
 
-    document.getElementById('s1Lbl').setAttribute('x', (postX - 8).toFixed(1));
-    document.getElementById('s1Lbl').setAttribute('y', (postY - 4).toFixed(1));
-    document.getElementById('s1Horiz').setAttribute('y1', s1MidY.toFixed(1));
-    document.getElementById('s1Horiz').setAttribute('y2', s1MidY.toFixed(1));
-    document.getElementById('ptLine').setAttribute('x1', s1MidX.toFixed(1));
-    document.getElementById('ptLine').setAttribute('y1', s1MidY.toFixed(1));
-    document.getElementById('ptLine').setAttribute('x2', hipX);
-    document.getElementById('ptLine').setAttribute('y2', hipY);
+    // Alvo do GSA: linha eixo femoral → C2 faz (GSA − PT) com a vertical (+ = anterior)
+    const alpha = (GSA - PT) * DEG;
+    const CL = 20;
+    const err = TK => {
+      const s = buildSpine(s1x, s1y, SS, LL, L4S1, TK, CL);
+      const c2 = s.cer.pts[s.cer.pts.length - 1];
+      return (c2[0] - hipX) - Math.tan(alpha) * (hipY - c2[1]);
+    };
+    let lo = -20, hi = 110, TK;
+    if (err(lo) >= 0) TK = lo;
+    else if (err(hi) <= 0) TK = hi;
+    else { for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (err(m) > 0) hi = m; else lo = m; } TK = (lo + hi) / 2; }
 
-    // Lordose Lombar (ápice/curvatura convexa para anterior = direita, +x)
-    const llNorm = Math.min(Math.max(LL / 65, -0.2), 1.35);
-    const ldiRatio = Math.min(Math.max(LDI / 100, 0.2), 0.9);
+    const sp = buildSpine(s1x, s1y, SS, LL, L4S1, TK, CL);
+    set('pathL4S1', { d: pathD(sp.lumLow.pts) });
+    set('pathL1L4', { d: pathD(sp.lumUp.pts) });
+    set('pathThoracic', { d: pathD(sp.tor.pts) });
+    set('pathCervical', { d: pathD(sp.cer.pts) });
 
-    const l4X = s1MidX + (6 + llNorm * ldiRatio * 24);
-    const l4Y = s1MidY - 56;
-    const l4CtrlX = s1MidX + (14 + llNorm * ldiRatio * 34);
-    const l4CtrlY = s1MidY - 28;
-    document.getElementById('pathL4S1').setAttribute('d', `M ${s1MidX.toFixed(1)} ${s1MidY.toFixed(1)} Q ${l4CtrlX.toFixed(1)} ${l4CtrlY.toFixed(1)} ${l4X.toFixed(1)} ${l4Y.toFixed(1)}`);
+    const L4 = sp.lumLow.pts[sp.lumLow.pts.length - 1];
+    const L1 = sp.lumUp.pts[sp.lumUp.pts.length - 1];
+    const T12 = sp.tor.pts[6];
+    const C7 = sp.cer.pts[6];
+    const C2 = sp.cer.pts[sp.cer.pts.length - 1];
 
-    const l1X = l4X + (2 - llNorm * (1 - ldiRatio) * 14);
-    const l1Y = l4Y - 56;
-    const l1CtrlX = l4X + (8 + llNorm * (1 - ldiRatio) * 20);
-    const l1CtrlY = l4Y - 28;
-    document.getElementById('pathL1L4').setAttribute('d', `M ${l4X.toFixed(1)} ${l4Y.toFixed(1)} Q ${l1CtrlX.toFixed(1)} ${l1CtrlY.toFixed(1)} ${l1X.toFixed(1)} ${l1Y.toFixed(1)}`);
-
-    // Cifose Torácica (convexa para posterior = esquerda, -x) e ajuste global por GSA
-    const gsaShift = (GSA - gsaIdeal) * 1.4;
-    const t12X = l1X - 12 + gsaShift * 0.45;
-    const t12Y = l1Y - 58;
-    const tCtrlX = l1X - 32 + gsaShift * 0.25;
-    const tCtrlY = l1Y - 29;
-    document.getElementById('pathThoracic').setAttribute('d', `M ${l1X.toFixed(1)} ${l1Y.toFixed(1)} Q ${tCtrlX.toFixed(1)} ${tCtrlY.toFixed(1)} ${t12X.toFixed(1)} ${t12Y.toFixed(1)}`);
-
-    // Lordose Cervical até C7 (convexa para anterior = direita, +x)
-    const c7X = t12X + 10 + gsaShift * 0.55;
-    const c7Y = Math.max(34, t12Y - 34);
-    const cCtrlX = t12X + 16 + gsaShift * 0.35;
-    const cCtrlY = t12Y - 17;
-    document.getElementById('pathCervical').setAttribute('d', `M ${t12X.toFixed(1)} ${t12Y.toFixed(1)} Q ${cCtrlX.toFixed(1)} ${cCtrlY.toFixed(1)} ${c7X.toFixed(1)} ${c7Y.toFixed(1)}`);
-
-    document.getElementById('ptL4').setAttribute('cx', l4X.toFixed(1));
-    document.getElementById('ptL4').setAttribute('cy', l4Y.toFixed(1));
-    document.getElementById('lblL4').setAttribute('x', (l4X + 8).toFixed(1));
-    document.getElementById('lblL4').setAttribute('y', (l4Y + 3).toFixed(1));
-
-    document.getElementById('ptL1').setAttribute('cx', l1X.toFixed(1));
-    document.getElementById('ptL1').setAttribute('cy', l1Y.toFixed(1));
-    document.getElementById('lblL1').setAttribute('x', (l1X + 8).toFixed(1));
-    document.getElementById('lblL1').setAttribute('y', (l1Y + 3).toFixed(1));
-
-    document.getElementById('ptT12').setAttribute('cx', t12X.toFixed(1));
-    document.getElementById('ptT12').setAttribute('cy', t12Y.toFixed(1));
-    document.getElementById('lblT12').setAttribute('x', (t12X - 28).toFixed(1));
-    document.getElementById('lblT12').setAttribute('y', (t12Y + 3).toFixed(1));
-
-    document.getElementById('ptC7').setAttribute('cx', c7X.toFixed(1));
-    document.getElementById('ptC7').setAttribute('cy', c7Y.toFixed(1));
-    document.getElementById('lblC7').setAttribute('x', (c7X + 10).toFixed(1));
-    document.getElementById('lblC7').setAttribute('y', (c7Y + 4).toFixed(1));
+    set('ptL4', { cx: L4[0], cy: L4[1] }); set('lblL4', { x: L4[0] + 9, y: L4[1] + 3 });
+    set('ptL1', { cx: L1[0], cy: L1[1] }); set('lblL1', { x: L1[0] + 9, y: L1[1] + 3 });
+    set('ptT12', { cx: T12[0], cy: T12[1] }); set('lblT12', { x: T12[0] - 30, y: T12[1] + 3 });
+    set('ptC7', { cx: C7[0], cy: C7[1] }); set('lblC7', { x: C7[0] + 10, y: C7[1] + 4 });
+    set('ptC2', { cx: C2[0], cy: C2[1] }); set('lblC2', { x: C2[0] + 8, y: C2[1] + 3 });
+    set('gsaLine', { x1: hipX, y1: hipY, x2: C2[0], y2: C2[1] });
+    document.getElementById('tkInfo').textContent = `Cifose torácica estimada (L1–T1): ${Math.round(TK)}°`;
 
     const showPJK = RLL > 11 || LDI < 40;
-    document.getElementById('pjkRing').setAttribute('cx', t12X.toFixed(1));
-    document.getElementById('pjkRing').setAttribute('cy', t12Y.toFixed(1));
+    set('pjkRing', { cx: T12[0], cy: T12[1] });
     document.getElementById('pjkRing').setAttribute('opacity', showPJK ? '1' : '0');
-    document.getElementById('pjkText').setAttribute('x', Math.max(24, t12X - 95).toFixed(1));
-    document.getElementById('pjkText').setAttribute('y', Math.max(40, t12Y - 12).toFixed(1));
+    set('pjkText', { x: Math.max(24, T12[0] - 105), y: Math.max(40, T12[1] - 14) });
     document.getElementById('pjkText').setAttribute('opacity', showPJK ? '1' : '0');
     document.getElementById('pjkAlert').textContent = showPJK ? '⚠ Risco juncional / desproporção' : 'Alinhamento segmentar estável';
   }
