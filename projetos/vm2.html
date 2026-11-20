@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de Ventilação Mecânica | Medicina Intensiva & USP-RP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            monitor: {
+              bg: '#080c12',
+              panel: '#0f1622',
+              card: '#151f2e',
+              border: '#233147',
+              pressure: '#fbbf24',
+              flow: '#2dd4bf',
+              volume: '#38bdf8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body {
+      overflow-x: auto !important;
+      overflow-y: auto !important;
+      height: auto !important;
+      min-height: 100% !important;
+      position: static !important;
+      touch-action: pan-x pan-y !important;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #1e293b;
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      border: 2px solid #0f1622;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+      transition: transform 0.1s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"]:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    input[type="range"]:disabled::-webkit-slider-thumb {
+      background: #64748b;
+      box-shadow: none;
+    }
+    .pulse-alarm {
+      animation: alarmPulse 1.4s infinite;
+    }
+    @keyframes alarmPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
+      50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #080c12;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #233147;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-monitor-bg text-slate-100 font-sans antialiased selection:bg-sky-500/30 selection:text-sky-200 min-h-screen flex flex-col">
+
+  <header class="bg-monitor-panel border-b border-monitor-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-400">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-7 4 14 3-7h4" />
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-sm sm:text-base tracking-tight text-white">VentSim ICU <span class="text-sky-400 font-mono text-xs px-1.5 py-0.5 bg-sky-500/10 rounded border border-sky-500/20">PRO</span></h1>
+          <span class="hidden md:inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            Fisiologia em Tempo Real
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400">Simulador de Ventilação Mecânica & Gasometria • Foco Residência USP-RP</p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-1.5">
+      <span class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mr-1 hidden xl:inline">Cenário Clínico:</span>
+      <div id="scenario-buttons" class="flex flex-wrap gap-1.5"></div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btn-insp-hold" type="button"
+        class="px-3 py-2 rounded-xl text-xs font-bold tracking-wide transition-all flex items-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25 active:scale-95 select-none"
+        title="Segure ou clique para realizar pausa inspiratória de 2 segundos e medir Pplat e Driving Pressure">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span id="insp-hold-label">Pausa Insp. (Pplat)</span>
+      </button>
+
+      <button id="btn-freeze" type="button"
+        class="px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 active:scale-95">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span id="freeze-label">Congelar</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 pb-0">
+    <div class="lg:col-span-6 bg-monitor-panel border border-monitor-border rounded-2xl p-3.5 flex flex-col justify-between">
+      <div>
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+          <div class="flex items-center gap-2">
+            <span id="case-badge" class="px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+              Caso 01
+            </span>
+            <h2 id="case-title" class="font-bold text-sm sm:text-base text-white">Pulmão Normal (Pós-operatório)</h2>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-mono text-slate-300 bg-monitor-card px-2.5 py-1 rounded-lg border border-monitor-border">
+            <span>Peso Predito: <strong id="case-ibw" class="text-white">70 kg</strong></span>
+            <span class="text-slate-600">|</span>
+            <span>C<sub>est</sub>: <strong id="case-comp" class="text-sky-400">60</strong></span>
+            <span>R<sub>va</sub>: <strong id="case-res" class="text-amber-400">8</strong></span>
+          </div>
+        </div>
+        <p id="case-vignette" class="text-xs sm:text-[13px] text-slate-300 leading-relaxed mb-2.5">
+          Paciente masculino, 45 anos, 1,75 m (Peso Predito 70 kg), em pós-operatório imediato de cirurgia abdominal alta, ainda sob efeito residual anestésico. Sem pneumopatia prévia.
+        </p>
+      </div>
+      <div class="bg-indigo-950/50 border border-indigo-500/30 rounded-xl p-2.5 flex items-start gap-2.5">
+        <span class="px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-300 font-bold text-[10px] uppercase tracking-wider shrink-0 mt-0.5">
+          Foco USP-RP
+        </span>
+        <p id="case-pearl" class="text-xs text-indigo-100/90 leading-snug">
+          Mesmo em pulmões saudáveis, utiliza-se ventilação protetora: Vt 6–8 mL/kg de peso predito, PEEP 5 cmH₂O e FiO₂ mínima para SatO₂ 92–96%.
+        </p>
+      </div>
+    </div>
+
+    <div class="lg:col-span-6 bg-monitor-panel border border-monitor-border rounded-2xl p-3.5 flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">Gasometria Arterial em Tempo Real</h2>
+        </div>
+        <span id="abg-interpretation" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+          Equilíbrio Ácido-Base Normal
+        </span>
+      </div>
+
+      <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <div id="card-ph" class="bg-monitor-card border border-monitor-border rounded-xl p-2 text-center transition-colors">
+          <div class="text-[11px] text-slate-400 font-medium">pH</div>
+          <div id="val-ph" class="font-mono text-lg sm:text-xl font-bold text-emerald-400 mt-0.5">7.40</div>
+          <div class="text-[10px] text-slate-500">7.35–7.45</div>
+        </div>
+        <div id="card-paco2" class="bg-monitor-card border border-monitor-border rounded-xl p-2 text-center transition-colors">
+          <div class="text-[11px] text-slate-400 font-medium">PaCO₂</div>
+          <div id="val-paco2" class="font-mono text-lg sm:text-xl font-bold text-emerald-400 mt-0.5">40</div>
+          <div class="text-[10px] text-slate-500">mmHg (35–45)</div>
+        </div>
+        <div id="card-pao2" class="bg-monitor-card border border-monitor-border rounded-xl p-2 text-center transition-colors">
+          <div class="text-[11px] text-slate-400 font-medium">PaO₂</div>
+          <div id="val-pao2" class="font-mono text-lg sm:text-xl font-bold text-sky-400 mt-0.5">95</div>
+          <div class="text-[10px] text-slate-500">mmHg (80–100)</div>
+        </div>
+        <div id="card-hco3" class="bg-monitor-card border border-monitor-border rounded-xl p-2 text-center">
+          <div class="text-[11px] text-slate-400 font-medium">HCO₃⁻</div>
+          <div id="val-hco3" class="font-mono text-lg sm:text-xl font-bold text-slate-200 mt-0.5">24.0</div>
+          <div class="text-[10px] text-slate-500">mEq/L (22–26)</div>
+        </div>
+        <div id="card-sato2" class="bg-monitor-card border border-monitor-border rounded-xl p-2 text-center transition-colors">
+          <div class="text-[11px] text-slate-400 font-medium">SatO₂</div>
+          <div id="val-sato2" class="font-mono text-lg sm:text-xl font-bold text-teal-400 mt-0.5">97%</div>
+          <div class="text-[10px] text-slate-500">Alvo 92–96%</div>
+        </div>
+        <div id="card-pf" class="bg-monitor-card border border-monitor-border rounded-xl p-2 text-center transition-colors">
+          <div class="text-[11px] text-slate-400 font-medium">PaO₂/FiO₂</div>
+          <div id="val-pf" class="font-mono text-lg sm:text-xl font-bold text-emerald-400 mt-0.5">452</div>
+          <div id="tag-pf" class="text-[10px] text-emerald-400/80 font-medium">Normal (&gt;400)</div>
+        </div>
+      </div>
+
+      <div id="clinical-alerts-bar" class="mt-2.5 flex flex-wrap items-center gap-1.5 min-h-[26px]"></div>
+    </div>
+  </section>
+
+  <main class="grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 flex-1">
+    <div class="lg:col-span-8 xl:col-span-9 bg-monitor-panel border border-monitor-border rounded-2xl p-3 flex flex-col justify-between min-h-[380px] sm:min-h-[440px]">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
+        <div class="flex items-center gap-4 text-xs font-medium">
+          <span class="flex items-center gap-1.5 text-monitor-pressure">
+            <span class="w-2.5 h-2.5 rounded-sm bg-monitor-pressure"></span>
+            Pressão (cmH₂O)
+          </span>
+          <span class="flex items-center gap-1.5 text-monitor-flow">
+            <span class="w-2.5 h-2.5 rounded-sm bg-monitor-flow"></span>
+            Fluxo (L/min)
+          </span>
+          <span class="flex items-center gap-1.5 text-monitor-volume">
+            <span class="w-2.5 h-2.5 rounded-sm bg-monitor-volume"></span>
+            Volume (mL)
+          </span>
+        </div>
+        <div class="flex items-center gap-3 text-[11px] font-mono text-slate-400">
+          <span id="wave-mode-badge" class="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700">MODO: VCV</span>
+          <span>Janela: 12s</span>
+        </div>
+      </div>
+
+      <div id="canvas-wrapper" class="relative w-full flex-1 min-h-[330px] rounded-xl overflow-hidden bg-[#06090e] border border-slate-800/80">
+        <canvas id="vent-canvas" class="block w-full h-full"></canvas>
+        <div id="hold-overlay" class="hidden absolute top-3 right-3 bg-amber-500/20 backdrop-blur-md border border-amber-400/50 text-amber-200 px-3 py-1.5 rounded-xl text-xs font-mono shadow-lg">
+          <div class="font-bold text-amber-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            PAUSA INSPIRATÓRIA (FLUXO = 0)
+          </div>
+          <div class="mt-0.5">P<sub>plat</sub>: <strong id="overlay-pplat">--</strong> cmH₂O | ΔP: <strong id="overlay-dp">--</strong> cmH₂O</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-4 xl:col-span-3 bg-monitor-panel border border-monitor-border rounded-2xl p-3 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-monitor-border">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">Mecânica & Monitorização</h2>
+          <span class="text-[10px] font-mono text-slate-400">Ciclo a Ciclo</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div id="mech-ppico-card" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-amber-400">P<sub>pico</sub></span>
+              <span class="text-[10px] text-slate-500">cmH₂O</span>
+            </div>
+            <div id="mech-ppico" class="font-mono text-2xl font-bold text-amber-300 mt-0.5">18.5</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Alvo &lt; 35</div>
+          </div>
+
+          <div id="mech-pplat-card" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-amber-400">P<sub>platô</sub></span>
+              <span class="text-[10px] text-slate-500">cmH₂O</span>
+            </div>
+            <div id="mech-pplat" class="font-mono text-2xl font-bold text-amber-300 mt-0.5">12.0</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Protetor &lt; 30</div>
+          </div>
+
+          <div id="mech-dp-card" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-rose-400">Driving P (ΔP)</span>
+              <span class="text-[10px] text-slate-500">cmH₂O</span>
+            </div>
+            <div id="mech-dp" class="font-mono text-2xl font-bold text-emerald-400 mt-0.5">7.0</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Alvo &lt; 15</div>
+          </div>
+
+          <div id="mech-peep-card" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-amber-400">PEEP Total</span>
+              <span id="autopeep-badge" class="text-[10px] font-mono text-slate-400">Auto: 0.0</span>
+            </div>
+            <div id="mech-peep-tot" class="font-mono text-2xl font-bold text-white mt-0.5">5.0</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Extrínseca: <span id="mech-peep-ext">5</span></div>
+          </div>
+
+          <div id="mech-vt-card" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-sky-400">V<sub>t</sub> Expirado</span>
+              <span class="text-[10px] text-slate-500">mL</span>
+            </div>
+            <div id="mech-vt" class="font-mono text-2xl font-bold text-sky-300 mt-0.5">420</div>
+            <div id="mech-vt-kg" class="text-[10px] font-mono font-semibold text-emerald-400 mt-0.5">6.0 mL/kg</div>
+          </div>
+
+          <div class="bg-monitor-card border border-monitor-border rounded-xl p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-teal-400">Vol. Minuto</span>
+              <span class="text-[10px] text-slate-500">L/min</span>
+            </div>
+            <div id="mech-ve" class="font-mono text-2xl font-bold text-teal-300 mt-0.5">6.3</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">FR: <span id="mech-fr">15</span> irpm</div>
+          </div>
+
+          <div id="mech-ie-card" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-slate-300">Relação I:E</span>
+              <span class="text-[10px] text-slate-500">Ti / Te</span>
+            </div>
+            <div id="mech-ie" class="font-mono text-xl font-bold text-white mt-0.5">1 : 3.0</div>
+            <div id="mech-tite" class="text-[10px] font-mono text-slate-400 mt-0.5">1.0s / 3.0s</div>
+          </div>
+
+          <div id="mech-grad-card" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-purple-400">P<sub>pico</sub> - P<sub>plat</sub></span>
+              <span class="text-[10px] text-slate-500">cmH₂O</span>
+            </div>
+            <div id="mech-grad" class="font-mono text-xl font-bold text-purple-300 mt-0.5">6.5</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Normal &lt; 5–7</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 pt-2.5 border-t border-monitor-border text-[11px] text-slate-400 space-y-1 font-mono">
+        <div class="flex justify-between">
+          <span>C<sub>est</sub> = Vt / (P<sub>plat</sub> - PEEP<sub>tot</sub>)</span>
+          <span id="calc-cest" class="text-sky-400 font-semibold">60 mL/cmH₂O</span>
+        </div>
+        <div class="flex justify-between">
+          <span>R<sub>va</sub> = (P<sub>pico</sub> - P<sub>plat</sub>) / Fluxo</span>
+          <span id="calc-rva" class="text-amber-400 font-semibold">8 cmH₂O/L/s</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="p-3 pt-0">
+    <div class="bg-monitor-panel border border-monitor-border rounded-2xl p-3.5">
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-monitor-border">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400 mr-1">Modo Ventilatório:</span>
+          <div class="inline-flex rounded-xl bg-monitor-bg p-1 border border-monitor-border">
+            <button type="button" data-mode="VCV" class="mode-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-sky-500 text-slate-950 shadow">
+              VCV (Volume)
+            </button>
+            <button type="button" data-mode="PCV" class="mode-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white">
+              PCV (Pressão)
+            </button>
+            <button type="button" data-mode="PSV" class="mode-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white">
+              PSV (Suporte)
+            </button>
+          </div>
+        </div>
+
+        <div id="flow-wave-selector" class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">Onda de Fluxo (VCV):</span>
+          <div class="inline-flex rounded-xl bg-monitor-bg p-1 border border-monitor-border">
+            <button type="button" data-wave="SQUARE" class="wave-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/40">
+              Quadrada (Constante)
+            </button>
+            <button type="button" data-wave="DECEL" class="wave-btn px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200">
+              Desacelerada
+            </button>
+          </div>
+        </div>
+
+        <div id="mode-description" class="text-xs text-slate-400 hidden xl:block">
+          <strong class="text-sky-400">VCV:</strong> Volume corrente e fluxo fixos; pressão varia conforme complacência e resistência.
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-monitor-card border border-monitor-border rounded-xl p-2.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-1">
+            <label for="ctrl-fio2" class="text-xs font-bold text-slate-200">FiO₂</label>
+            <span class="font-mono text-sm font-bold text-sky-400"><span id="disp-fio2">30</span>%</span>
+          </div>
+          <div class="flex items-center gap-2 my-1">
+            <button type="button" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="fio2" data-step="-5">−</button>
+            <input id="ctrl-fio2" type="range" min="21" max="100" step="1" value="30" class="w-full" />
+            <button type="button" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="fio2" data-step="5">+</button>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+            <span>21%</span><span>60%</span><span>100%</span>
+          </div>
+        </div>
+
+        <div class="bg-monitor-card border border-monitor-border rounded-xl p-2.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-1">
+            <label for="ctrl-peep" class="text-xs font-bold text-amber-300">PEEP</label>
+            <span class="font-mono text-sm font-bold text-amber-300"><span id="disp-peep">5</span> <span class="text-[10px] font-normal">cmH₂O</span></span>
+          </div>
+          <div class="flex items-center gap-2 my-1">
+            <button type="button" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="peep" data-step="-1">−</button>
+            <input id="ctrl-peep" type="range" min="0" max="24" step="1" value="5" class="w-full" />
+            <button type="button" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="peep" data-step="1">+</button>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+            <span>0</span><span>12</span><span>24</span>
+          </div>
+        </div>
+
+        <div id="box-fr" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5 flex flex-col justify-between transition-opacity">
+          <div class="flex items-center justify-between mb-1">
+            <label for="ctrl-fr" id="lbl-fr" class="text-xs font-bold text-slate-200">Freq. Resp (FR)</label>
+            <span class="font-mono text-sm font-bold text-teal-300"><span id="disp-fr">15</span> <span class="text-[10px] font-normal">irpm</span></span>
+          </div>
+          <div class="flex items-center gap-2 my-1">
+            <button type="button" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="fr" data-step="-1">−</button>
+            <input id="ctrl-fr" type="range" min="8" max="35" step="1" value="15" class="w-full" />
+            <button type="button" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="fr" data-step="1">+</button>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+            <span>8</span><span>20</span><span>35</span>
+          </div>
+        </div>
+
+        <div id="box-vt" class="bg-monitor-card border border-sky-500/40 rounded-xl p-2.5 flex flex-col justify-between transition-opacity">
+          <div class="flex items-center justify-between mb-1">
+            <label for="ctrl-vt" class="text-xs font-bold text-sky-300">Vol. Corrente (Vt)</label>
+            <span class="font-mono text-sm font-bold text-sky-300"><span id="disp-vt">420</span> <span class="text-[10px] font-normal">mL</span></span>
+          </div>
+          <div class="flex items-center gap-2 my-1">
+            <button type="button" id="btn-vt-minus" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="vt" data-step="-10">−</button>
+            <input id="ctrl-vt" type="range" min="250" max="800" step="10" value="420" class="w-full" />
+            <button type="button" id="btn-vt-plus" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="vt" data-step="10">+</button>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+            <span>250</span><span id="vt-kg-hint" class="text-sky-400">6.0 mL/kg</span><span>800</span>
+          </div>
+        </div>
+
+        <div id="box-pinsp" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5 flex flex-col justify-between opacity-50 transition-opacity">
+          <div class="flex items-center justify-between mb-1">
+            <label for="ctrl-pinsp" id="lbl-pinsp" class="text-xs font-bold text-amber-300">ΔP Insp. (PCV)</label>
+            <span class="font-mono text-sm font-bold text-amber-300">+<span id="disp-pinsp">12</span> <span class="text-[10px] font-normal">cmH₂O</span></span>
+          </div>
+          <div class="flex items-center gap-2 my-1">
+            <button type="button" id="btn-pinsp-minus" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="pinsp" data-step="-1" disabled>−</button>
+            <input id="ctrl-pinsp" type="range" min="5" max="35" step="1" value="12" class="w-full" disabled />
+            <button type="button" id="btn-pinsp-plus" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="pinsp" data-step="1" disabled>+</button>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+            <span>+5</span><span>Acima PEEP</span><span>+35</span>
+          </div>
+        </div>
+
+        <div id="box-ti" class="bg-monitor-card border border-monitor-border rounded-xl p-2.5 flex flex-col justify-between transition-opacity">
+          <div class="flex items-center justify-between mb-1">
+            <label for="ctrl-ti" id="lbl-ti" class="text-xs font-bold text-slate-200">Tempo Insp. (Ti)</label>
+            <span class="font-mono text-sm font-bold text-purple-300"><span id="disp-ti">1.0</span> <span class="text-[10px] font-normal">s</span></span>
+          </div>
+          <div class="flex items-center gap-2 my-1">
+            <button type="button" id="btn-ti-minus" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="ti" data-step="-0.1">−</button>
+            <input id="ctrl-ti" type="range" min="0.5" max="2.5" step="0.1" value="1.0" class="w-full" />
+            <button type="button" id="btn-ti-plus" class="step-btn w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center active:scale-95" data-target="ti" data-step="0.1">+</button>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+            <span>0.5s</span><span id="flow-equiv-hint" class="text-teal-400">Fluxo: 25 L/m</span><span>2.5s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function liberarRolagem() {
+      const style = document.createElement('style');
+      style.textContent = `
+        html, body {
+          overflow: auto !important;
+          overflow-x: auto !important;
+          overflow-y: auto !important;
+          height: auto !important;
+          min-height: 100% !important;
+          position: static !important;
+          touch-action: pan-x pan-y !important;
+        }
+      `;
+      document.head.appendChild(style);
+    })();
+
+    const CLINICAL_SCENARIOS = [
+      {
+        id: 'normal',
+        shortName: 'Pulmão Normal',
+        badge: 'Caso 01 • Pós-Op',
+        title: 'Pulmão Normal (Pós-Operatório)',
+        ibw: 70,
+        compliance: 60,
+        resistance: 8,
+        shuntFraction: 0.06,
+        deadSpaceRatio: 0.30,
+        vco2: 200,
+        hco3: 24.0,
+        spontaneousDrive: 14,
+        vignette: 'Paciente masculino, 45 anos, 1,75 m (Peso Predito 70 kg), em pós-operatório imediato de laparotomia exploradora, sob sedação residual. Sem pneumopatia prévia.',
+        pearl: 'Mesmo em pulmões saudáveis, a estratégia protetora é obrigatória: Vt 6–8 mL/kg de peso predito, PEEP 5 cmH₂O e FiO₂ mínima para manter SatO₂ entre 92–96% (evitar hiperóxia).',
+        initialSettings: { mode: 'VCV', flowWave: 'SQUARE', fio2: 30, peep: 5, fr: 15, vt: 450, pinsp: 12, ti: 1.0 }
+      },
+      {
+        id: 'ards',
+        shortName: 'SDRA Grave',
+        badge: 'Caso 02 • SDRA / Sara',
+        title: 'SDRA Grave (Pneumonia / Sepse Pulmonar)',
+        ibw: 65,
+        compliance: 24,
+        resistance: 11,
+        shuntFraction: 0.42,
+        deadSpaceRatio: 0.52,
+        vco2: 230,
+        hco3: 20.5,
+        spontaneousDrive: 26,
+        vignette: 'Mulher, 52 anos, Peso Predito 65 kg, choque séptico de foco pulmonar (Pneumonia bilateral). Infiltrado alveolar difuso nos 4 quadrantes. Apresenta hipoxemia grave.',
+        pearl: 'Clássico USP-RP: Ventilação protetora estrita! Vt 4–6 mL/kg (260–390 mL), Pplatô < 30 cmH₂O, Driving Pressure (ΔP = Pplat - PEEP) < 15 cmH₂O e titulação de PEEP para recrutamento alveolar. Hipercapnia permissiva (pH > 7.20) é aceita.',
+        initialSettings: { mode: 'VCV', flowWave: 'DECEL', fio2: 80, peep: 8, fr: 20, vt: 480, pinsp: 18, ti: 1.0 }
+      },
+      {
+        id: 'copd',
+        shortName: 'DPOC Exacerbado',
+        badge: 'Caso 03 • DPOC / Auto-PEEP',
+        title: 'DPOC Exacerbado com Aprisionamento Aéreo',
+        ibw: 70,
+        compliance: 75,
+        resistance: 24,
+        shuntFraction: 0.14,
+        deadSpaceRatio: 0.48,
+        vco2: 210,
+        hco3: 31.0,
+        spontaneousDrive: 22,
+        vignette: 'Homem, 68 anos, Peso Predito 70 kg, tabagista 60 maços-ano, intubado por exacerbação infecciosa de DPOC. Observe a curva de fluxo expiratório não retornando a zero.',
+        pearl: 'Questão clássica USP-RP: Constante de tempo (τ = R × C) muito prolongada! Para eliminar Auto-PEEP (hiperinsuflação dinâmica), deve-se REDUZIR a FR (10–14 irpm), encurtar Ti (aumentar fluxo inspiratório) para prolongar Te (I:E 1:3 a 1:4) e manter alvo de SatO₂ 88–92%.',
+        initialSettings: { mode: 'VCV', flowWave: 'SQUARE', fio2: 40, peep: 5, fr: 22, vt: 500, pinsp: 15, ti: 1.1 }
+      },
+      {
+        id: 'asthma',
+        shortName: 'Crise Asmática',
+        badge: 'Caso 04 • Mal Asmático',
+        title: 'Crise Asmática Grave (Mal Asmático)',
+        ibw: 60,
+        compliance: 56,
+        resistance: 38,
+        shuntFraction: 0.12,
+        deadSpaceRatio: 0.44,
+        vco2: 220,
+        hco3: 23.0,
+        spontaneousDrive: 25,
+        vignette: 'Paciente jovem, 28 anos, Peso Predito 60 kg, intubada por estado de mal asmático refratário. Ventilador dispara alarme de pressão de pico elevada (> 45 cmH₂O).',
+        pearl: 'Diferencial fundamental na USP-RP: Ppico muito elevado com Pplatô normal (< 30 cmH₂O) e gradiente (Ppico - Pplat) > 10–15 cmH₂O indica aumento puro de RESISTÊNCIA (broncoespasmo/rolha/tubo dobrado), e NÃO risco de barotrauma alveolar. Priorize tempo expiratório longo e hipercapnia permissiva.',
+        initialSettings: { mode: 'VCV', flowWave: 'SQUARE', fio2: 50, peep: 4, fr: 16, vt: 420, pinsp: 20, ti: 0.9 }
+      },
+      {
+        id: 'tbi',
+        shortName: 'TCE Grave',
+        badge: 'Caso 05 • Neurointensivismo',
+        title: 'Traumatismo Cranioencefálico (TCE) Grave',
+        ibw: 75,
+        compliance: 58,
+        resistance: 9,
+        shuntFraction: 0.08,
+        deadSpaceRatio: 0.32,
+        vco2: 210,
+        hco3: 24.0,
+        spontaneousDrive: 14,
+        vignette: 'Homem, 32 anos, Peso Predito 75 kg, vítima de colisão moto x auto, Glasgow 6 na cena, submetido à IOT para proteção de via aérea. Tomografia com edema cerebral difuso.',
+        pearl: 'Cobrado frequentemente na USP-RP: No TCE grave, o CO₂ é potente regulador do fluxo sanguíneo cerebral! Hipercapnia causa vasodilatação cerebral e eleva a PIC; hipocapnia excessiva (< 30 mmHg) causa isquemia cerebral por vasoconstrição. Meta: Normocapnia estrita (PaCO₂ 35–40 mmHg) e normóxia (PaO₂ > 80–100 mmHg).',
+        initialSettings: { mode: 'VCV', flowWave: 'SQUARE', fio2: 40, peep: 5, fr: 12, vt: 450, pinsp: 12, ti: 1.0 }
+      }
+    ];
+
+    const state = {
+      scenario: CLINICAL_SCENARIOS[0],
+      mode: 'VCV',
+      flowWave: 'SQUARE',
+      fio2: 30,
+      peep: 5,
+      fr: 15,
+      vt: 450,
+      pinsp: 12,
+      ti: 1.0,
+      isFrozen: false,
+      inspHoldActive: false,
+      inspHoldTimer: 0,
+      mechanics: {
+        ppico: 0,
+        pplat: 0,
+        drivingPressure: 0,
+        autoPeep: 0,
+        totalPeep: 5,
+        actualVt: 450,
+        vtPerKg: 6.4,
+        minuteVentilation: 6.75,
+        ieRatioText: '1 : 3.0',
+        ti: 1.0,
+        te: 3.0,
+        peakFlowLpm: 27,
+        resistiveGradient: 0
+      },
+      abg: {
+        ph: 7.40,
+        paco2: 40,
+        pao2: 95,
+        hco3: 24.0,
+        sato2: 97,
+        pfRatio: 452
+      },
+      simTime: 0,
+      lastFrameTime: null,
+      history: []
+    };
+
+    const WINDOW_SECONDS = 12.0;
+
+    function recalculatePhysiology() {
+      const sc = state.scenario;
+      const C_L = sc.compliance / 1000;
+      const R = sc.resistance;
+      const tau = R * C_L;
+
+      let effectiveFR = state.fr;
+      if (state.mode === 'PSV') {
+        const supportFactor = Math.max(0.75, Math.min(1.3, 14 / Math.max(6, state.pinsp)));
+        effectiveFR = Math.round(Math.min(36, Math.max(10, sc.spontaneousDrive * supportFactor)));
+      }
+
+      const cycleDuration = 60 / effectiveFR;
+
+      let ti = state.ti;
+      let te = Math.max(0.4, cycleDuration - ti);
+      let actualVt_L = state.vt / 1000;
+      let peakFlow_Ls = 0;
+      let endInspFlow_Ls = 0;
+
+      if (state.mode === 'VCV') {
+        ti = Math.min(state.ti, cycleDuration * 0.8);
+        te = Math.max(0.3, cycleDuration - ti);
+        actualVt_L = state.vt / 1000;
+
+        if (state.flowWave === 'SQUARE') {
+          peakFlow_Ls = actualVt_L / ti;
+          endInspFlow_Ls = peakFlow_Ls;
+        } else {
+          peakFlow_Ls = (actualVt_L / ti) / 0.6;
+          endInspFlow_Ls = peakFlow_Ls * 0.2;
+        }
+      } else if (state.mode === 'PCV') {
+        ti = Math.min(state.ti, cycleDuration * 0.8);
+        te = Math.max(0.3, cycleDuration - ti);
+      } else if (state.mode === 'PSV') {
+        ti = Math.min(cycleDuration * 0.65, Math.max(0.6, 1.35 * tau));
+        te = Math.max(0.4, cycleDuration - ti);
+      }
+
+      let autoPeep = 0;
+      if (state.mode === 'VCV') {
+        const decay = Math.exp(-te / Math.max(0.15, tau));
+        const trappedVol_L = (actualVt_L * decay) / Math.max(0.05, (1 - decay));
+        autoPeep = Math.min(18, trappedVol_L / C_L);
+        if (autoPeep < 0.2) autoPeep = 0;
+      } else {
+        const decay = Math.exp(-te / Math.max(0.15, tau));
+        const effectiveDeltaP = state.pinsp;
+        const fillFactor = 1 - Math.exp(-ti / Math.max(0.12, tau));
+        const num = effectiveDeltaP * fillFactor * decay;
+        const den = 1 - decay * (1 - fillFactor);
+        autoPeep = Math.min(16, Math.max(0, num / Math.max(0.05, den)));
+        if (autoPeep < 0.2) autoPeep = 0;
+
+        const netPressureDrive = Math.max(2, state.pinsp - autoPeep * 0.65);
+        actualVt_L = netPressureDrive * C_L * fillFactor;
+        peakFlow_Ls = netPressureDrive / Math.max(2, R);
+        endInspFlow_Ls = peakFlow_Ls * Math.exp(-ti / Math.max(0.12, tau));
+      }
+
+      const totalPeep = state.peep + autoPeep;
+      const pplat = (actualVt_L / C_L) + totalPeep;
+
+      let ppico = pplat;
+      if (state.mode === 'VCV') {
+        if (state.flowWave === 'SQUARE') {
+          ppico = pplat + (R * peakFlow_Ls);
+        } else {
+          const midVol = actualVt_L * 0.45;
+          const midFlow = peakFlow_Ls * 0.72;
+          const pMid = (midVol / C_L) + totalPeep + (R * midFlow);
+          const pEnd = pplat + (R * endInspFlow_Ls);
+          ppico = Math.max(pMid, pEnd);
+        }
+      } else {
+        ppico = state.peep + state.pinsp;
+      }
+
+      const drivingPressure = Math.max(0, pplat - totalPeep);
+      const resistiveGradient = Math.max(0, ppico - pplat);
+      const actualVt_mL = Math.round(actualVt_L * 1000);
+      const vtPerKg = actualVt_mL / sc.ibw;
+      const minuteVentilation = (actualVt_mL * effectiveFR) / 1000;
+
+      let ieRatioText = '';
+      if (te >= ti) {
+        ieRatioText = `1 : ${(te / ti).toFixed(1)}`;
+      } else {
+        ieRatioText = `${(ti / te).toFixed(1)} : 1`;
+      }
+
+      state.mechanics = {
+        ppico,
+        pplat,
+        drivingPressure,
+        autoPeep,
+        totalPeep,
+        actualVt: actualVt_mL,
+        vtPerKg,
+        minuteVentilation,
+        ieRatioText,
+        ti,
+        te,
+        effectiveFR,
+        peakFlowLpm: peakFlow_Ls * 60,
+        endInspFlowLs: endInspFlow_Ls,
+        resistiveGradient,
+        tau
+      };
+
+      const overdistensionDeadSpace = pplat > 30 ? (pplat - 30) * 0.008 : 0;
+      const effectiveDeadSpace = Math.min(0.75, sc.deadSpaceRatio + overdistensionDeadSpace);
+      const alveolarVentilation = Math.max(1.2, minuteVentilation * (1 - effectiveDeadSpace));
+
+      const rawPaCO2 = (sc.vco2 * 0.863) / alveolarVentilation;
+      const paco2 = Math.min(130, Math.max(16, rawPaCO2));
+
+      const acuteHco3Shift = (paco2 - 40) * 0.07;
+      const currentHco3 = Math.max(8, sc.hco3 + acuteHco3Shift);
+      const ph = 6.1 + Math.log10(currentHco3 / (0.03 * paco2));
+
+      const fio2Frac = state.fio2 / 100;
+      const pAO2 = Math.max(30, fio2Frac * 713 - (paco2 / 0.8));
+
+      let effectiveShunt = sc.shuntFraction;
+      if (sc.id === 'ards') {
+        const recruitGain = Math.min(0.24, Math.max(-0.08, (state.peep - 5) * 0.017));
+        effectiveShunt = Math.max(0.10, sc.shuntFraction - recruitGain);
+      } else {
+        const peepEffect = state.peep <= 10 ? (state.peep - 5) * 0.005 : -(state.peep - 10) * 0.008;
+        effectiveShunt = Math.min(0.50, Math.max(0.03, sc.shuntFraction - peepEffect));
+      }
+
+      const venousO2 = 40;
+      const shuntPenalty = effectiveShunt * 1.35;
+      let pao2 = pAO2 * (1 - shuntPenalty) + venousO2 * (shuntPenalty * 0.45);
+      pao2 = Math.min(620, Math.max(32, pao2));
+
+      const p50 = 26.8 * Math.pow(10, 0.48 * (7.40 - ph));
+      const pao2Pow = Math.pow(pao2, 2.7);
+      const p50Pow = Math.pow(p50, 2.7);
+      const sato2 = Math.min(100, Math.max(45, (pao2Pow / (pao2Pow + p50Pow)) * 100));
+
+      const pfRatio = Math.round(pao2 / fio2Frac);
+
+      state.abg = {
+        ph,
+        paco2,
+        pao2,
+        hco3: currentHco3,
+        sato2,
+        pfRatio
+      };
+    }
+
+    function sampleWaveformsAtTime(t) {
+      const m = state.mechanics;
+      const sc = state.scenario;
+      const C_L = sc.compliance / 1000;
+      const R = sc.resistance;
+      const tau = Math.max(0.12, m.tau);
+
+      if (state.inspHoldActive) {
+        return {
+          p: m.pplat,
+          f: 0,
+          v: m.actualVt,
+          isHold: true
+        };
+      }
+
+      const cycleDuration = m.ti + m.te;
+      const phaseTime = t % cycleDuration;
+
+      let p = state.peep;
+      let f = 0;
+      let v = 0;
+
+      if (phaseTime <= m.ti) {
+        const u = phaseTime / m.ti;
+
+        if (state.mode === 'VCV') {
+          if (state.flowWave === 'SQUARE') {
+            const flow_Ls = (m.actualVt / 1000) / m.ti;
+            const valveRamp = Math.min(1, phaseTime / 0.04);
+            f = flow_Ls * 60 * valveRamp;
+            v = m.actualVt * u;
+            p = m.totalPeep + ((v / 1000) / C_L) + (R * flow_Ls * valveRamp);
+          } else {
+            const peak_Ls = ((m.actualVt / 1000) / m.ti) / 0.6;
+            const valveRamp = Math.min(1, phaseTime / 0.04);
+            const curFlow_Ls = peak_Ls * (1 - 0.8 * u) * valveRamp;
+            f = curFlow_Ls * 60;
+            const volFrac = (u - 0.4 * u * u) / 0.6;
+            v = m.actualVt * Math.min(1, volFrac);
+            p = m.totalPeep + ((v / 1000) / C_L) + (R * curFlow_Ls);
+          }
+        } else {
+          const riseTime = Math.min(1, phaseTime / 0.06);
+          p = state.peep + (state.pinsp * riseTime);
+
+          const fillDenom = 1 - Math.exp(-m.ti / tau);
+          const curFill = 1 - Math.exp(-phaseTime / tau);
+          v = m.actualVt * (curFill / Math.max(0.05, fillDenom));
+
+          const peak_Ls = m.peakFlowLpm / 60;
+          f = peak_Ls * Math.exp(-phaseTime / tau) * 60 * riseTime;
+        }
+      } else {
+        const expTime = phaseTime - m.ti;
+        p = state.peep;
+
+        const expDecay = Math.exp(-expTime / tau);
+        const endDecay = Math.exp(-m.te / tau);
+
+        const normDecay = (expDecay - endDecay) / Math.max(0.01, 1 - endDecay);
+        v = m.actualVt * Math.max(0, normDecay);
+
+        const peakExpFlow_Ls = Math.min(1.6, ((m.pplat - state.peep) / Math.max(4, R)));
+        const expValveRamp = Math.min(1, expTime / 0.045);
+        f = -peakExpFlow_Ls * expDecay * 60 * expValveRamp;
+      }
+
+      return { p, f, v, isHold: false };
+    }
+
+    function updateUI() {
+      const m = state.mechanics;
+      const a = state.abg;
+      const sc = state.scenario;
+
+      document.getElementById('disp-fio2').textContent = state.fio2;
+      document.getElementById('disp-peep').textContent = state.peep;
+      document.getElementById('disp-fr').textContent = state.mode === 'PSV' ? `${m.effectiveFR} (esp)` : state.fr;
+      document.getElementById('disp-vt').textContent = state.vt;
+      document.getElementById('disp-pinsp').textContent = state.pinsp;
+      document.getElementById('disp-ti').textContent = m.ti.toFixed(1);
+
+      document.getElementById('vt-kg-hint').textContent = `${(state.vt / sc.ibw).toFixed(1)} mL/kg`;
+      document.getElementById('flow-equiv-hint').textContent = state.mode === 'VCV'
+        ? `Fluxo: ${Math.round(m.peakFlowLpm)} L/m`
+        : `Ti Auto (25% pico)`;
+
+      document.getElementById('mech-ppico').textContent = m.ppico.toFixed(1);
+      document.getElementById('mech-pplat').textContent = m.pplat.toFixed(1);
+      document.getElementById('mech-dp').textContent = m.drivingPressure.toFixed(1);
+      document.getElementById('mech-peep-tot').textContent = m.totalPeep.toFixed(1);
+      document.getElementById('mech-peep-ext').textContent = state.peep;
+      document.getElementById('autopeep-badge').textContent = `Auto: ${m.autoPeep.toFixed(1)}`;
+      document.getElementById('mech-vt').textContent = m.actualVt;
+      document.getElementById('mech-vt-kg').textContent = `${m.vtPerKg.toFixed(1)} mL/kg`;
+      document.getElementById('mech-ve').textContent = m.minuteVentilation.toFixed(1);
+      document.getElementById('mech-fr').textContent = m.effectiveFR;
+      document.getElementById('mech-ie').textContent = m.ieRatioText;
+      document.getElementById('mech-tite').textContent = `${m.ti.toFixed(1)}s / ${m.te.toFixed(1)}s`;
+      document.getElementById('mech-grad').textContent = m.resistiveGradient.toFixed(1);
+
+      document.getElementById('calc-cest').textContent = `${sc.compliance} mL/cmH₂O`;
+      document.getElementById('calc-rva').textContent = `${sc.resistance} cmH₂O/L/s`;
+
+      document.getElementById('overlay-pplat').textContent = m.pplat.toFixed(1);
+      document.getElementById('overlay-dp').textContent = m.drivingPressure.toFixed(1);
+
+      setCardAlert('mech-ppico-card', m.ppico > 38 ? 'danger' : m.ppico > 35 ? 'warn' : 'ok');
+      setCardAlert('mech-pplat-card', m.pplat > 30 ? 'danger' : m.pplat > 28 ? 'warn' : 'ok');
+      setCardAlert('mech-dp-card', m.drivingPressure > 15 ? 'danger' : m.drivingPressure > 13 ? 'warn' : 'ok');
+      setCardAlert('mech-peep-card', m.autoPeep > 2.0 ? 'danger' : m.autoPeep > 0.5 ? 'warn' : 'ok');
+      setCardAlert('mech-vt-card', m.vtPerKg > 8.0 ? 'danger' : (sc.id === 'ards' && m.vtPerKg > 6.5) ? 'warn' : 'ok');
+
+      const vtKgEl = document.getElementById('mech-vt-kg');
+      vtKgEl.className = `text-[10px] font-mono font-semibold mt-0.5 ${
+        m.vtPerKg > 8.0 ? 'text-rose-400' : (sc.id === 'ards' && m.vtPerKg > 6.5) ? 'text-amber-400' : 'text-emerald-400'
+      }`;
+
+      const dpEl = document.getElementById('mech-dp');
+      dpEl.className = `font-mono text-2xl font-bold mt-0.5 ${
+        m.drivingPressure > 15 ? 'text-rose-400' : m.drivingPressure > 13 ? 'text-amber-400' : 'text-emerald-400'
+      }`;
+
+      const phEl = document.getElementById('val-ph');
+      phEl.textContent = a.ph.toFixed(2);
+      phEl.className = `font-mono text-lg sm:text-xl font-bold mt-0.5 ${
+        a.ph < 7.20 || a.ph > 7.55 ? 'text-rose-400' : (a.ph < 7.35 || a.ph > 7.45) ? 'text-amber-400' : 'text-emerald-400'
+      }`;
+
+      const paco2El = document.getElementById('val-paco2');
+      paco2El.textContent = Math.round(a.paco2);
+      paco2El.className = `font-mono text-lg sm:text-xl font-bold mt-0.5 ${
+        a.paco2 > 55 || a.paco2 < 28 ? 'text-rose-400' : (a.paco2 > 45 || a.paco2 < 35) ? 'text-amber-400' : 'text-emerald-400'
+      }`;
+
+      const pao2El = document.getElementById('val-pao2');
+      pao2El.textContent = Math.round(a.pao2);
+      pao2El.className = `font-mono text-lg sm:text-xl font-bold mt-0.5 ${
+        a.pao2 < 60 ? 'text-rose-400' : a.pao2 < 75 ? 'text-amber-400' : 'text-sky-400'
+      }`;
+
+      document.getElementById('val-hco3').textContent = a.hco3.toFixed(1);
+
+      const sato2El = document.getElementById('val-sato2');
+      sato2El.textContent = `${Math.round(a.sato2)}%`;
+      sato2El.className = `font-mono text-lg sm:text-xl font-bold mt-0.5 ${
+        a.sato2 < 88 ? 'text-rose-400' : a.sato2 < 92 ? 'text-amber-400' : 'text-teal-400'
+      }`;
+
+      const pfEl = document.getElementById('val-pf');
+      const tagPf = document.getElementById('tag-pf');
+      pfEl.textContent = a.pfRatio;
+      if (a.pfRatio <= 100) {
+        pfEl.className = 'font-mono text-lg sm:text-xl font-bold mt-0.5 text-rose-400';
+        tagPf.textContent = 'SDRA Grave (≤100)';
+        tagPf.className = 'text-[10px] text-rose-400 font-semibold';
+      } else if (a.pfRatio <= 200) {
+        pfEl.className = 'font-mono text-lg sm:text-xl font-bold mt-0.5 text-amber-400';
+        tagPf.textContent = 'SDRA Mod (101-200)';
+        tagPf.className = 'text-[10px] text-amber-400 font-semibold';
+      } else if (a.pfRatio <= 300) {
+        pfEl.className = 'font-mono text-lg sm:text-xl font-bold mt-0.5 text-yellow-300';
+        tagPf.textContent = 'Hipox. Leve (201-300)';
+        tagPf.className = 'text-[10px] text-yellow-300 font-semibold';
+      } else {
+        pfEl.className = 'font-mono text-lg sm:text-xl font-bold mt-0.5 text-emerald-400';
+        tagPf.textContent = 'Normal (>300)';
+        tagPf.className = 'text-[10px] text-emerald-400/80 font-medium';
+      }
+
+      updateAbgInterpretationBadge(a);
+      renderClinicalAlerts(m, a, sc);
+    }
+
+    function setCardAlert(elementId, level) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      el.classList.remove('border-monitor-border', 'border-amber-500/60', 'border-rose-500', 'bg-rose-950/20', 'pulse-alarm');
+      if (level === 'danger') {
+        el.classList.add('border-rose-500', 'bg-rose-950/20', 'pulse-alarm');
+      } else if (level === 'warn') {
+        el.classList.add('border-amber-500/60');
+      } else {
+        el.classList.add('border-monitor-border');
+      }
+    }
+
+    function updateAbgInterpretationBadge(a) {
+      const badge = document.getElementById('abg-interpretation');
+      let label = 'Equilíbrio Ácido-Base Normal';
+      let style = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+
+      if (a.ph < 7.35) {
+        if (a.paco2 > 45 && a.hco3 < 22) {
+          label = 'Acidose Mista (Resp + Metab)';
+          style = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+        } else if (a.paco2 > 45) {
+          label = a.hco3 > 27 ? 'Acidose Resp. Crônica Agudizada' : 'Acidose Respiratória';
+          style = a.ph < 7.20 ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        } else {
+          label = 'Acidose Metabólica';
+          style = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        }
+      } else if (a.ph > 7.45) {
+        if (a.paco2 < 35) {
+          label = 'Alcalose Respiratória';
+          style = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        } else {
+          label = 'Alcalose Metabólica';
+          style = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        }
+      } else {
+        if (a.paco2 > 46 && a.hco3 > 27) {
+          label = 'Acidose Resp. Compensada';
+          style = 'bg-sky-500/15 text-sky-300 border-sky-500/30';
+        }
+      }
+
+      badge.textContent = label;
+      badge.className = `text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${style}`;
+    }
+
+    function renderClinicalAlerts(m, a, sc) {
+      const bar = document.getElementById('clinical-alerts-bar');
+      const alerts = [];
+
+      if (m.pplat > 30) {
+        alerts.push({ type: 'danger', text: `⚠ Pplatô > 30 cmH₂O (${m.pplat.toFixed(1)}) — Risco de Barotrauma!` });
+      }
+      if (m.drivingPressure > 15) {
+        alerts.push({ type: 'danger', text: `⚠ Driving Pressure > 15 cmH₂O (${m.drivingPressure.toFixed(1)}) — Reduza Vt!` });
+      }
+      if (m.vtPerKg > 8.0) {
+        alerts.push({ type: 'danger', text: `⚠ Volutrauma: Vt ${m.vtPerKg.toFixed(1)} mL/kg (> 8 mL/kg)` });
+      } else if (sc.id === 'ards' && m.vtPerKg > 6.2) {
+        alerts.push({ type: 'warn', text: `⚡ SDRA: Ajuste Vt para 4–6 mL/kg (Atual: ${m.vtPerKg.toFixed(1)} mL/kg)` });
+      }
+      if (m.autoPeep > 1.5) {
+        alerts.push({ type: 'danger', text: `⚠ Auto-PEEP detectada (+${m.autoPeep.toFixed(1)} cmH₂O) — Aumente Te / Reduza FR!` });
+      }
+      if (a.sato2 < 88) {
+        alerts.push({ type: 'danger', text: `⚠ Hipoxemia Crítica (SatO₂ ${Math.round(a.sato2)}%) — Aumente FiO₂ / PEEP` });
+      }
+      if (sc.id === 'tbi' && (a.paco2 < 35 || a.paco2 > 40)) {
+        alerts.push({
+          type: 'danger',
+          text: a.paco2 > 40
+            ? `⚠ TCE: Hipercapnia (PaCO₂ ${Math.round(a.paco2)}) eleva PIC! Meta: 35–40 mmHg`
+            : `⚠ TCE: Hipocapnia (PaCO₂ ${Math.round(a.paco2)}) causa isquemia cerebral! Meta: 35–40 mmHg`
+        });
+      }
+
+      if (alerts.length === 0) {
+        bar.innerHTML = `
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
+            ✓ Parâmetros dentro das metas de ventilação protetora e troca gasosa adequada para o caso.
+          </span>
+        `;
+      } else {
+        bar.innerHTML = alerts.map(al => {
+          const cls = al.type === 'danger'
+            ? 'bg-rose-500/15 text-rose-300 border-rose-500/40'
+            : 'bg-amber-500/15 text-amber-300 border-amber-500/40';
+          return `<span class="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-lg border ${cls}">${al.text}</span>`;
+        }).join('');
+      }
+    }
+
+    const canvas = document.getElementById('vent-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const wrapper = document.getElementById('canvas-wrapper');
+      if (!wrapper) return;
+      const rect = wrapper.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(300, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(300, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function drawWaveforms() {
+      const wrapper = document.getElementById('canvas-wrapper');
+      const W = wrapper.clientWidth;
+      const H = wrapper.clientHeight;
+      if (W <= 0 || H <= 0) return;
+
+      ctx.clearRect(0, 0, W, H);
+
+      const padLeft = 46;
+      const padRight = 14;
+      const padTop = 12;
+      const padBottom = 14;
+      const plotW = W - padLeft - padRight;
+      const totalPlotH = H - padTop - padBottom;
+      const trackGap = 14;
+      const trackH = (totalPlotH - trackGap * 2) / 3;
+
+      const pMax = Math.max(40, Math.ceil((state.mechanics.ppico + 8) / 10) * 10);
+      const fMax = 80;
+      const vMax = Math.max(700, Math.ceil((state.mechanics.actualVt + 120) / 100) * 100);
+
+      const tracks = [
+        {
+          yTop: padTop,
+          height: trackH,
+          min: 0,
+          max: pMax,
+          color: '#fbbf24',
+          fill: 'rgba(251, 191, 36, 0.10)',
+          label: 'P (cmH₂O)',
+          ticks: [0, Math.round(pMax / 2), pMax],
+          zeroVal: 0
+        },
+        {
+          yTop: padTop + trackH + trackGap,
+          height: trackH,
+          min: -fMax,
+          max: fMax,
+          color: '#2dd4bf',
+          fill: 'rgba(45, 212, 191, 0.08)',
+          label: 'F (L/min)',
+          ticks: [-60, 0, 60],
+          zeroVal: 0
+        },
+        {
+          yTop: padTop + (trackH + trackGap) * 2,
+          height: trackH,
+          min: 0,
+          max: vMax,
+          color: '#38bdf8',
+          fill: 'rgba(56, 189, 248, 0.10)',
+          label: 'V (mL)',
+          ticks: [0, Math.round(vMax / 2), vMax],
+          zeroVal: 0
+        }
+      ];
+
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+      for (let s = 0; s <= WINDOW_SECONDS; s++) {
+        const x = padLeft + (s / WINDOW_SECONDS) * plotW;
+        ctx.beginPath();
+        ctx.moveTo(x, padTop);
+        ctx.lineTo(x, H - padBottom);
+        ctx.stroke();
+      }
+
+      tracks.forEach((tr) => {
+        ctx.fillStyle = 'rgba(15, 22, 34, 0.45)';
+        ctx.fillRect(padLeft, tr.yTop, plotW, tr.height);
+
+        tr.ticks.forEach((tickVal) => {
+          const norm = (tickVal - tr.min) / (tr.max - tr.min);
+          const y = tr.yTop + tr.height - norm * tr.height;
+
+          ctx.strokeStyle = tickVal === tr.zeroVal
+            ? 'rgba(148, 163, 184, 0.28)'
+            : 'rgba(148, 163, 184, 0.09)';
+          ctx.lineWidth = tickVal === tr.zeroVal ? 1.2 : 1;
+          ctx.beginPath();
+          ctx.moveTo(padLeft, y);
+          ctx.lineTo(padLeft + plotW, y);
+          ctx.stroke();
+
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(tickVal.toString(), padLeft - 6, y);
+        });
+
+        if (tr.label.startsWith('P')) {
+          const peepNorm = (state.peep - tr.min) / (tr.max - tr.min);
+          const yPeep = tr.yTop + tr.height - peepNorm * tr.height;
+          ctx.save();
+          ctx.setLineDash([4, 4]);
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+          ctx.beginPath();
+          ctx.moveTo(padLeft, yPeep);
+          ctx.lineTo(padLeft + plotW, yPeep);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+
+      if (state.history.length > 1) {
+        const latestT = state.history[state.history.length - 1].t;
+        const startT = latestT - WINDOW_SECONDS;
+        const visiblePoints = state.history.filter(pt => pt.t >= startT);
+
+        if (visiblePoints.length > 1) {
+          const keys = ['p', 'f', 'v'];
+          tracks.forEach((tr, idx) => {
+            const key = keys[idx];
+            const zeroNorm = (tr.zeroVal - tr.min) / (tr.max - tr.min);
+            const yZero = tr.yTop + tr.height - zeroNorm * tr.height;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(padLeft, tr.yTop, plotW, tr.height);
+            ctx.clip();
+
+            ctx.beginPath();
+            visiblePoints.forEach((pt, i) => {
+              const x = padLeft + ((pt.t - startT) / WINDOW_SECONDS) * plotW;
+              const val = Math.max(tr.min, Math.min(tr.max, pt[key]));
+              const norm = (val - tr.min) / (tr.max - tr.min);
+              const y = tr.yTop + tr.height - norm * tr.height;
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            });
+
+            ctx.strokeStyle = tr.color;
+            ctx.lineWidth = 2.2;
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            const firstX = padLeft + ((visiblePoints[0].t - startT) / WINDOW_SECONDS) * plotW;
+            const lastX = padLeft + ((visiblePoints[visiblePoints.length - 1].t - startT) / WINDOW_SECONDS) * plotW;
+            ctx.lineTo(lastX, yZero);
+            ctx.lineTo(firstX, yZero);
+            ctx.closePath();
+            ctx.fillStyle = tr.fill;
+            ctx.fill();
+
+            const lastPt = visiblePoints[visiblePoints.length - 1];
+            const lastVal = Math.max(tr.min, Math.min(tr.max, lastPt[key]));
+            const lastY = tr.yTop + tr.height - ((lastVal - tr.min) / (tr.max - tr.min)) * tr.height;
+            ctx.beginPath();
+            ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            ctx.restore();
+          });
+        }
+      }
+    }
+
+    function animationLoop(timestamp) {
+      if (!state.lastFrameTime) state.lastFrameTime = timestamp;
+      const dt = Math.min(0.05, (timestamp - state.lastFrameTime) / 1000);
+      state.lastFrameTime = timestamp;
+
+      if (state.inspHoldActive) {
+        state.inspHoldTimer -= dt;
+        if (state.inspHoldTimer <= 0) {
+          state.inspHoldActive = false;
+          document.getElementById('hold-overlay').classList.add('hidden');
+          document.getElementById('insp-hold-label').textContent = 'Pausa Insp. (Pplat)';
+        }
+      }
+
+      if (!state.isFrozen) {
+        const subSteps = 2;
+        const subDt = dt / subSteps;
+        for (let i = 0; i < subSteps; i++) {
+          state.simTime += subDt;
+          const sample = sampleWaveformsAtTime(state.simTime);
+          state.history.push({
+            t: state.simTime,
+            p: sample.p,
+            f: sample.f,
+            v: sample.v,
+            isHold: sample.isHold
+          });
+        }
+
+        const cutoff = state.simTime - (WINDOW_SECONDS + 1.0);
+        while (state.history.length > 0 && state.history[0].t < cutoff) {
+          state.history.shift();
+        }
+      }
+
+      drawWaveforms();
+      requestAnimationFrame(animationLoop);
+    }
+
+    function loadScenario(scenarioId) {
+      const found = CLINICAL_SCENARIOS.find(s => s.id === scenarioId);
+      if (!found) return;
+      state.scenario = found;
+
+      const init = found.initialSettings;
+      state.mode = init.mode;
+      state.flowWave = init.flowWave;
+      state.fio2 = init.fio2;
+      state.peep = init.peep;
+      state.fr = init.fr;
+      state.vt = init.vt;
+      state.pinsp = init.pinsp;
+      state.ti = init.ti;
+
+      document.getElementById('ctrl-fio2').value = state.fio2;
+      document.getElementById('ctrl-peep').value = state.peep;
+      document.getElementById('ctrl-fr').value = state.fr;
+      document.getElementById('ctrl-vt').value = state.vt;
+      document.getElementById('ctrl-pinsp').value = state.pinsp;
+      document.getElementById('ctrl-ti').value = state.ti;
+
+      document.getElementById('case-badge').textContent = found.badge;
+      document.getElementById('case-title').textContent = found.title;
+      document.getElementById('case-ibw').textContent = `${found.ibw} kg`;
+      document.getElementById('case-comp').textContent = found.compliance;
+      document.getElementById('case-res').textContent = found.resistance;
+      document.getElementById('case-vignette').textContent = found.vignette;
+      document.getElementById('case-pearl').textContent = found.pearl;
+
+      document.querySelectorAll('.scenario-btn').forEach(btn => {
+        if (btn.dataset.id === scenarioId) {
+          btn.className = 'scenario-btn px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-sky-500 text-slate-950 shadow-sm shadow-sky-500/30';
+        } else {
+          btn.className = 'scenario-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-monitor-card text-slate-300 border border-monitor-border hover:border-slate-500 hover:text-white';
+        }
+      });
+
+      setVentMode(state.mode);
+      setFlowWave(state.flowWave);
+      recalculatePhysiology();
+      updateUI();
+    }
+
+    function setVentMode(newMode) {
+      state.mode = newMode;
+      document.getElementById('wave-mode-badge').textContent = `MODO: ${newMode}`;
+
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        if (btn.dataset.mode === newMode) {
+          btn.className = 'mode-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-sky-500 text-slate-950 shadow';
+        } else {
+          btn.className = 'mode-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white';
+        }
+      });
+
+      const boxVt = document.getElementById('box-vt');
+      const ctrlVt = document.getElementById('ctrl-vt');
+      const btnVtM = document.getElementById('btn-vt-minus');
+      const btnVtP = document.getElementById('btn-vt-plus');
+
+      const boxPinsp = document.getElementById('box-pinsp');
+      const ctrlPinsp = document.getElementById('ctrl-pinsp');
+      const btnPinspM = document.getElementById('btn-pinsp-minus');
+      const btnPinspP = document.getElementById('btn-pinsp-plus');
+      const lblPinsp = document.getElementById('lbl-pinsp');
+
+      const boxTi = document.getElementById('box-ti');
+      const ctrlTi = document.getElementById('ctrl-ti');
+      const btnTiM = document.getElementById('btn-ti-minus');
+      const btnTiP = document.getElementById('btn-ti-plus');
+
+      const boxFr = document.getElementById('box-fr');
+      const ctrlFr = document.getElementById('ctrl-fr');
+      const flowSelector = document.getElementById('flow-wave-selector');
+      const modeDesc = document.getElementById('mode-description');
+
+      if (newMode === 'VCV') {
+        boxVt.classList.remove('opacity-50');
+        boxVt.classList.add('border-sky-500/40');
+        ctrlVt.disabled = btnVtM.disabled = btnVtP.disabled = false;
+
+        boxPinsp.classList.add('opacity-50');
+        boxPinsp.classList.remove('border-amber-500/40');
+        ctrlPinsp.disabled = btnPinspM.disabled = btnPinspP.disabled = true;
+
+        boxTi.classList.remove('opacity-50');
+        ctrlTi.disabled = btnTiM.disabled = btnTiP.disabled = false;
+
+        boxFr.classList.remove('opacity-50');
+        ctrlFr.disabled = false;
+
+        flowSelector.classList.remove('opacity-40', 'pointer-events-none');
+        modeDesc.innerHTML = '<strong class="text-sky-400">VCV:</strong> Volume corrente e fluxo fixos; pressão varia conforme complacência e resistência.';
+      } else if (newMode === 'PCV') {
+        boxVt.classList.add('opacity-50');
+        boxVt.classList.remove('border-sky-500/40');
+        ctrlVt.disabled = btnVtM.disabled = btnVtP.disabled = true;
+
+        boxPinsp.classList.remove('opacity-50');
+        boxPinsp.classList.add('border-amber-500/40');
+        ctrlPinsp.disabled = btnPinspM.disabled = btnPinspP.disabled = false;
+        lblPinsp.textContent = 'ΔP Controlada (PCV)';
+
+        boxTi.classList.remove('opacity-50');
+        ctrlTi.disabled = btnTiM.disabled = btnTiP.disabled = false;
+
+        boxFr.classList.remove('opacity-50');
+        ctrlFr.disabled = false;
+
+        flowSelector.classList.add('opacity-40', 'pointer-events-none');
+        modeDesc.innerHTML = '<strong class="text-amber-400">PCV:</strong> Pressão inspiratória constante, ciclagem a tempo (Ti); volume varia conforme mecânica.';
+      } else if (newMode === 'PSV') {
+        boxVt.classList.add('opacity-50');
+        boxVt.classList.remove('border-sky-500/40');
+        ctrlVt.disabled = btnVtM.disabled = btnVtP.disabled = true;
+
+        boxPinsp.classList.remove('opacity-50');
+        boxPinsp.classList.add('border-amber-500/40');
+        ctrlPinsp.disabled = btnPinspM.disabled = btnPinspP.disabled = false;
+        lblPinsp.textContent = 'Pressão Suporte (PS)';
+
+        boxTi.classList.add('opacity-50');
+        ctrlTi.disabled = btnTiM.disabled = btnTiP.disabled = true;
+
+        boxFr.classList.add('opacity-50');
+        ctrlFr.disabled = true;
+
+        flowSelector.classList.add('opacity-40', 'pointer-events-none');
+        modeDesc.innerHTML = '<strong class="text-teal-400">PSV:</strong> Modo espontâneo disparado pelo paciente, limitado a pressão e ciclado a fluxo (25% do pico).';
+      }
+
+      recalculatePhysiology();
+      updateUI();
+    }
+
+    function setFlowWave(wave) {
+      state.flowWave = wave;
+      document.querySelectorAll('.wave-btn').forEach(btn => {
+        if (btn.dataset.wave === wave) {
+          btn.className = 'wave-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/40';
+        } else {
+          btn.className = 'wave-btn px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200';
+        }
+      });
+      recalculatePhysiology();
+      updateUI();
+    }
+
+    function bindControls() {
+      const scenarioContainer = document.getElementById('scenario-buttons');
+      scenarioContainer.innerHTML = CLINICAL_SCENARIOS.map(sc => `
+        <button type="button" data-id="${sc.id}" class="scenario-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-monitor-card text-slate-300 border border-monitor-border hover:border-slate-500 hover:text-white">
+          ${sc.shortName}
+        </button>
+      `).join('');
+
+      scenarioContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.scenario-btn');
+        if (btn) loadScenario(btn.dataset.id);
+      });
+
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => setVentMode(btn.dataset.mode));
+      });
+
+      document.querySelectorAll('.wave-btn').forEach(btn => {
+        btn.addEventListener('click', () => setFlowWave(btn.dataset.wave));
+      });
+
+      const paramMap = [
+        { id: 'ctrl-fio2', key: 'fio2', parse: parseInt },
+        { id: 'ctrl-peep', key: 'peep', parse: parseInt },
+        { id: 'ctrl-fr', key: 'fr', parse: parseInt },
+        { id: 'ctrl-vt', key: 'vt', parse: parseInt },
+        { id: 'ctrl-pinsp', key: 'pinsp', parse: parseInt },
+        { id: 'ctrl-ti', key: 'ti', parse: parseFloat }
+      ];
+
+      paramMap.forEach(({ id, key, parse }) => {
+        const input = document.getElementById(id);
+        input.addEventListener('input', () => {
+          state[key] = parse(input.value);
+          recalculatePhysiology();
+          updateUI();
+        });
+      });
+
+      document.querySelectorAll('.step-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetKey = btn.dataset.target;
+          const step = parseFloat(btn.dataset.step);
+          const input = document.getElementById(`ctrl-${targetKey}`);
+          if (!input || input.disabled) return;
+
+          const min = parseFloat(input.min);
+          const max = parseFloat(input.max);
+          let nextVal = parseFloat(input.value) + step;
+          nextVal = Math.min(max, Math.max(min, Number(nextVal.toFixed(1))));
+
+          input.value = nextVal;
+          state[targetKey] = nextVal;
+          recalculatePhysiology();
+          updateUI();
+        });
+      });
+
+      document.getElementById('btn-insp-hold').addEventListener('click', () => {
+        if (state.isFrozen) {
+          state.isFrozen = false;
+          document.getElementById('freeze-label').textContent = 'Congelar';
+        }
+        state.inspHoldActive = true;
+        state.inspHoldTimer = 2.0;
+        document.getElementById('hold-overlay').classList.remove('hidden');
+        document.getElementById('insp-hold-label').textContent = 'Medindo Pplat...';
+        recalculatePhysiology();
+        updateUI();
+      });
+
+      document.getElementById('btn-freeze').addEventListener('click', () => {
+        state.isFrozen = !state.isFrozen;
+        const btn = document.getElementById('btn-freeze');
+        const lbl = document.getElementById('freeze-label');
+        if (state.isFrozen) {
+          lbl.textContent = 'Retomar';
+          btn.classList.add('bg-sky-500/20', 'text-sky-300', 'border-sky-500/50');
+        } else {
+          lbl.textContent = 'Congelar';
+          btn.classList.remove('bg-sky-500/20', 'text-sky-300', 'border-sky-500/50');
+        }
+      });
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    window.onload = function () {
+      bindControls();
+      resizeCanvas();
+
+      loadScenario('normal');
+      for (let t = 0; t < 6.0; t += 0.016) {
+        state.simTime = t;
+        const s = sampleWaveformsAtTime(t);
+        state.history.push({ t, p: s.p, f: s.f, v: s.v, isHold: false });
+      }
+
+      requestAnimationFrame(animationLoop);
+    };
+  </script>
+</body>
+</html>
