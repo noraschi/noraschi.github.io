@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Interativo — Artrodese Intersomática Lombar (ALIF, PLIF, TLIF, LLIF, OLIF)</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-alt: #263349;
+    --border: #334155;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 16px; line-height: 1.45; }
+  .container { max-width: 1180px; margin: 0 auto; }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  h1 { font-size: 1.25rem; font-weight: 700; }
+  .subtitle { font-size: 0.82rem; color: var(--muted); }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preset-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; }
+  .preset-btn:hover { border-color: var(--accent); background: var(--card-alt); }
+
+  .banner { background: var(--card); border: 1px solid var(--border); border-left: 5px solid var(--accent); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .tag { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: var(--accent); margin-bottom: 6px; }
+  .b-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; }
+  .b-desc { font-size: 0.85rem; color: var(--muted); }
+  .kpis { display: flex; gap: 8px; flex-wrap: wrap; }
+  .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; text-align: center; min-width: 96px; }
+  .kpi-lbl { font-size: 0.68rem; color: var(--muted); font-weight: 700; }
+  .kpi-val { font-size: 0.9rem; font-weight: 700; margin-top: 2px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 16px; }
+  @media (max-width: 920px) { .grid { grid-template-columns: 1fr; } .banner { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 13px; }
+  .panel-title { font-size: 0.92rem; font-weight: 700; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; display: flex; justify-content: space-between; }
+
+  .ctrl { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-lbl { font-size: 0.82rem; font-weight: 600; display: flex; justify-content: space-between; }
+  .seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 5px; }
+  .seg-btn { background: var(--bg); border: 1px solid var(--border); color: var(--muted); padding: 7px 6px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; }
+  .seg-btn.active { background: var(--accent); color: #0f172a; border-color: var(--accent); }
+  select, input[type="range"] { width: 100%; }
+  select { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px 10px; border-radius: 6px; font-size: 0.84rem; }
+  input[type="range"] { accent-color: var(--accent); cursor: pointer; }
+
+  .svg-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; justify-content: center; }
+  .matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 560px) { .matrix { grid-template-columns: 1fr; } }
+  .m-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-size: 0.78rem; }
+  .m-top { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 3px; }
+  .ok { color: var(--success); }
+  .warn { color: var(--warning); }
+  .bad { color: var(--danger); }
+  .note { background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 8px; padding: 11px; font-size: 0.81rem; color: #e2e8f0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>Simulador de Artrodese Intersomática Lombar</h1>
+      <div class="subtitle">Comparação Biomecânica e Anatômica: ALIF · PLIF · TLIF · LLIF/XLIF · OLIF</div>
+    </div>
+    <div class="presets">
+      <button class="preset-btn" onclick="preset('l5s1_lord')">L5–S1: Lordose Alta</button>
+      <button class="preset-btn" onclick="preset('l4l5_ind')">L4–L5: Descomp. Indireta</button>
+      <button class="preset-btn" onclick="preset('bony_dir')">Estenose Óssea Direta</button>
+      <button class="preset-btn" onclick="preset('l5s1_hern')">L5–S1: Via Posterior</button>
+    </div>
+  </header>
+
+  <div class="banner">
+    <div>
+      <span class="tag" id="bTag">TÉCNICA PRINCIPAL INDICADA</span>
+      <div class="b-title" id="bTitle">ALIF (Anterior Lumbar Interbody Fusion)</div>
+      <div class="b-desc" id="bDesc">Ideal para restauração pronunciada de lordose lombar baixa em L5–S1 com amplo apoio cortical e descompressão indireta.</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-lbl">NÍVEL</div><div class="kpi-val" id="kLvl">L5–S1</div></div>
+      <div class="kpi"><div class="kpi-lbl">ÁREA CAGE</div><div class="kpi-val" id="kArea">Ampla</div></div>
+      <div class="kpi"><div class="kpi-lbl">ALVO PONTO</div><div class="kpi-val" id="kTarget">Disco Ant.</div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-title"><span>1. Cenário Biomecânico e Anatômico</span></div>
+
+      <div class="ctrl">
+        <div class="ctrl-lbl"><span>Nível Intersomático:</span></div>
+        <div class="seg" id="lvlSeg">
+          <button class="seg-btn" data-v="L2-L3" onclick="setLvl('L2-L3')">L2–L3</button>
+          <button class="seg-btn" data-v="L3-L4" onclick="setLvl('L3-L4')">L3–L4</button>
+          <button class="seg-btn" data-v="L4-L5" onclick="setLvl('L4-L5')">L4–L5</button>
+          <button class="seg-btn active" data-v="L5-S1" onclick="setLvl('L5-S1')">L5–S1</button>
+        </div>
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-lbl"><span>Necessidade de Descompressão Neural:</span></div>
+        <select id="decompSel" onchange="render()">
+          <option value="indirect" selected>Indireta suficiente (altura discal / forame / estabilidade)</option>
+          <option value="direct">Direta necessária (estenose central óssea / fragmento / faceta)</option>
+        </select>
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-lbl"><span>Demanda de Lordose Segmentar Desejada:</span><span id="lordVal" style="color:var(--accent)">16°</span></div>
+        <input id="lordSlider" type="range" min="2" max="24" step="1" value="16" oninput="render()">
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-lbl"><span>Crista Ilíaca Alta Bloqueando Lateral em L4–L5 / L5–S1:</span></div>
+        <div class="seg" id="iliacSeg">
+          <button class="seg-btn" data-v="0" onclick="setIliac(0)">Não</button>
+          <button class="seg-btn active" data-v="1" onclick="setIliac(1)">Sim</button>
+        </div>
+      </div>
+
+      <div class="panel-title" style="margin-top:4px;"><span>2. Viabilidade Comparativa das Técnicas</span></div>
+      <div class="matrix" id="matrixBox"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>Esquema Axial — Posição do Cage e Corredor de Entrada</span></div>
+      <div class="svg-box">
+        <svg id="axSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 270" width="100%">
+          <text x="210" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#94a3b8">ANTERIOR (Abdome / Grandes Vasos)</text>
+          <text x="210" y="262" text-anchor="middle" font-size="11" font-weight="bold" fill="#94a3b8">POSTERIOR (Canal / Elementos Posteriores)</text>
+
+          <!-- Corpo / Disco -->
+          <ellipse cx="210" cy="138" rx="58" ry="38" fill="#334155" stroke="#94a3b8" stroke-width="2"/>
+          <!-- Cage representado dinamicamente dentro do disco -->
+          <rect id="cageShape" x="172" y="114" width="76" height="48" rx="5" fill="#38bdf8" fill-opacity="0.32" stroke="#38bdf8" stroke-width="2.5"/>
+          <text id="cageLbl" x="210" y="142" text-anchor="middle" font-size="10" font-weight="bold" fill="#f8fafc">Cage ALIF</text>
+
+          <!-- Canal / Saco Dural -->
+          <circle cx="210" cy="190" r="15" fill="#ef4444" fill-opacity="0.22" stroke="#ef4444" stroke-width="1.8"/>
+          <text x="210" y="218" text-anchor="middle" font-size="9" font-weight="bold" fill="#fca5a5">Saco Dural / Raízes</text>
+
+          <!-- Psoas -->
+          <ellipse cx="130" cy="138" rx="24" ry="32" fill="#475569" fill-opacity="0.35" stroke="#64748b" stroke-width="1.5"/>
+          <ellipse cx="290" cy="138" rx="24" ry="32" fill="#475569" fill-opacity="0.35" stroke="#64748b" stroke-width="1.5"/>
+          <text x="290" y="182" text-anchor="middle" font-size="9" fill="#94a3b8">Psoas / Plexo</text>
+
+          <!-- Vasos -->
+          <circle cx="182" cy="88" r="10" fill="#3b82f6" fill-opacity="0.45" stroke="#60a5fa" stroke-width="1.5"/>
+          <circle cx="238" cy="88" r="10" fill="#ef4444" fill-opacity="0.45" stroke="#f87171" stroke-width="1.5"/>
+
+          <!-- Linha de Acesso -->
+          <line id="accLine" x1="210" y1="30" x2="210" y2="112" stroke="#22c55e" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="note" id="noteBox"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let st = { lvl: 'L5-S1', iliac: 1 };
+
+  function setLvl(v) {
+    st.lvl = v;
+    document.querySelectorAll('#lvlSeg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+    render();
+  }
+  function setIliac(v) {
+    st.iliac = v;
+    document.querySelectorAll('#iliacSeg .seg-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.v) === v));
+    render();
+  }
+  function preset(name) {
+    if (name === 'l5s1_lord') {
+      setLvl('L5-S1'); setIliac(1);
+      document.getElementById('decompSel').value = 'indirect';
+      document.getElementById('lordSlider').value = 18;
+    } else if (name === 'l4l5_ind') {
+      setLvl('L4-L5'); setIliac(0);
+      document.getElementById('decompSel').value = 'indirect';
+      document.getElementById('lordSlider').value = 12;
+    } else if (name === 'bony_dir') {
+      setLvl('L4-L5'); setIliac(1);
+      document.getElementById('decompSel').value = 'direct';
+      document.getElementById('lordSlider').value = 8;
+    } else if (name === 'l5s1_hern') {
+      setLvl('L5-S1'); setIliac(1);
+      document.getElementById('decompSel').value = 'direct';
+      document.getElementById('lordSlider').value = 6;
+    }
+    render();
+  }
+
+  function render() {
+    const decomp = document.getElementById('decompSel').value;
+    const lord = Number(document.getElementById('lordSlider').value);
+    document.getElementById('lordVal').textContent = lord + '°';
+    document.getElementById('kLvl').textContent = st.lvl;
+
+    const isL5S1 = st.lvl === 'L5-S1';
+    const latBlocked = isL5S1 || (st.lvl === 'L4-L5' && st.iliac === 1);
+
+    let recTitle = '', recDesc = '', area = '', target = '', note = '';
+    let cage = [172, 114, 76, 48, 'Cage ALIF'];
+    let line = [210, 30, 210, 112];
+
+    if (decomp === 'direct') {
+      recTitle = isL5S1 ? 'TLIF (ou PLIF) em L5–S1' : 'TLIF (ou MIS-TLIF / PLIF)';
+      recDesc = 'A necessidade de descompressão neural direta favorece o acesso posterior com ressecção facetária (TLIF) ou bilateral (PLIF).';
+      area = 'Moderada';
+      target = 'Forame / Canal';
+      cage = [184, 128, 56, 26, 'Cage TLIF'];
+      line = [295, 245, 238, 166];
+      note = '<strong>Descompressão Direta:</strong> Quando há estenose óssea central, fragmento livre ou necessidade de liberação radicular direta, o TLIF permite ressecar a faceta e inserir o cage sem grande retração do saco dural (ao contrário do PLIF bilateral).';
+    } else if (isL5S1 && lord >= 12) {
+      recTitle = 'ALIF (Anterior Lumbar Interbody Fusion)';
+      recDesc = 'Em L5–S1, a janela vascular abaixo da bifurcação permite cage hiperlordótico amplo e excelente ganho de lordose distal.';
+      area = 'Muito Ampla';
+      target = 'Disco Anterior';
+      cage = [166, 108, 88, 44, 'Cage ALIF'];
+      line = [210, 30, 210, 108];
+      note = '<strong>ALIF em L5–S1:</strong> Permite ressecção do ligamento longitudinal anterior (LLA) e inserção de implante com grande ângulo lordótico e ampla base cortical, frequentemente associado a fixação posterior percutânea.';
+    } else if (!latBlocked) {
+      recTitle = 'LLIF / XLIF ou OLIF';
+      recDesc = 'Acesso lateral (transpsoas) ou oblíquo (pré-psoas) oferece cage largo apoiado no anel apofisário cortical e forte descompressão indireta.';
+      area = 'Extra-Larga';
+      target = 'Anel Cortical';
+      cage = [156, 122, 108, 32, 'Cage Lateral'];
+      line = [355, 138, 265, 138];
+      note = '<strong>LLIF / XLIF vs. OLIF:</strong> Ambos permitem cages amplos com alta resistência à subsidência e descompressão indireta. O LLIF atravessa o psoas (exige atenção ao plexo lombar/EMG); o OLIF passa anterior ao psoas (poupa o músculo, exigindo atenção a vasos/simpático/ureter).';
+    } else {
+      recTitle = 'OLIF ou TLIF (Evitando Bloqueio Lateral)';
+      recDesc = 'Com crista ilíaca alta ou em L5–S1, o acesso lateral direto (LLIF) encontra bloqueio ósseo; OLIF ou TLIF são alternativas mais adequadas.';
+      area = isL5S1 ? 'Ampla / Mod.' : 'Moderada';
+      target = isL5S1 ? 'Pré-Psoas / Post.' : 'Forame / Disco';
+      cage = [174, 118, 72, 38, 'Cage OLIF/TLIF'];
+      line = [315, 62, 245, 118];
+      note = '<strong>Contornando a Crista Ilíaca:</strong> Em L5–S1 (e em L4–L5 com crista ilíaca alta), o corredor transpsoas lateral puro é dificultado pela asa do ilíaco. O OLIF (corredor oblíquo pré-psoas) ou o TLIF resolvem o nível com segurança.';
+    }
+
+    document.getElementById('bTitle').textContent = recTitle;
+    document.getElementById('bDesc').textContent = recDesc;
+    document.getElementById('kArea').textContent = area;
+    document.getElementById('kTarget').textContent = target;
+    document.getElementById('noteBox').innerHTML = note;
+
+    const cEl = document.getElementById('cageShape');
+    cEl.setAttribute('x', cage[0]); cEl.setAttribute('y', cage[1]);
+    cEl.setAttribute('width', cage[2]); cEl.setAttribute('height', cage[3]);
+    document.getElementById('cageLbl').textContent = cage[4];
+
+    const lEl = document.getElementById('accLine');
+    lEl.setAttribute('x1', line[0]); lEl.setAttribute('y1', line[1]);
+    lEl.setAttribute('x2', line[2]); lEl.setAttribute('y2', line[3]);
+
+    const items = [
+      {
+        n: 'ALIF',
+        st: isL5S1 ? 'Excelente (L5–S1)' : 'L4–L5 Possível',
+        cls: isL5S1 ? 'ok' : 'warn',
+        d: 'Maior lordose distal; risco vascular e plexo hipogástrico.'
+      },
+      {
+        n: 'LLIF / XLIF',
+        st: latBlocked ? 'Bloqueado / Limitado' : 'Favorável (L1–L5)',
+        cls: latBlocked ? 'bad' : 'ok',
+        d: 'Cage largo transpsoas; atenção ao plexo lombar e crista ilíaca.'
+      },
+      {
+        n: 'OLIF',
+        st: 'Corredor Pré-Psoas',
+        cls: 'ok',
+        d: 'Poupa o psoas; atenção a vasos, simpático e ureter.'
+      },
+      {
+        n: 'TLIF / PLIF',
+        st: decomp === 'direct' ? 'Ideal p/ Direta' : 'Via Posterior',
+        cls: decomp === 'direct' ? 'ok' : 'warn',
+        d: 'TLIF (unilateral) reduz retração dural frente ao PLIF (bilateral).'
+      }
+    ];
+
+    document.getElementById('matrixBox').innerHTML = items.map(i => `
+      <div class="m-card">
+        <div class="m-top"><span>${i.n}</span><span class="${i.cls}">${i.st}</span></div>
+        <div style="color:var(--muted); font-size:0.74rem;">${i.d}</div>
+      </div>
+    `).join('');
+  }
+
+  render();
+</script>
+</body>
+</html>
