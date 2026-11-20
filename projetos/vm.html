@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VentAlarm & Assincronias ICU | Residência USP-RP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            icu: {
+              bg: '#060a10',
+              panel: '#0d1420',
+              card: '#131d2e',
+              border: '#203049',
+              pressure: '#fbbf24',
+              flow: '#2dd4bf',
+              volume: '#38bdf8',
+              pmus: '#f472b6',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body {
+      overflow-x: auto !important;
+      overflow-y: auto !important;
+      height: auto !important;
+      min-height: 100% !important;
+      position: static !important;
+      touch-action: pan-x pan-y !important;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #1e293b;
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      border: 2px solid #0d1420;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.55);
+      transition: transform 0.1s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"]:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    @keyframes blinkRed {
+      0%, 100% { background-color: rgba(220, 38, 38, 0.25); border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 0 16px rgba(239, 68, 68, 0.35); }
+      50% { background-color: rgba(127, 29, 29, 0.15); border-color: rgba(239, 68, 68, 0.3); box-shadow: none; }
+    }
+    @keyframes blinkAmber {
+      0%, 100% { background-color: rgba(217, 119, 6, 0.22); border-color: rgba(245, 158, 11, 0.85); }
+      50% { background-color: rgba(120, 53, 15, 0.12); border-color: rgba(245, 158, 11, 0.25); }
+    }
+    .alarm-high { animation: blinkRed 1.1s infinite; }
+    .alarm-med { animation: blinkAmber 1.5s infinite; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #060a10; }
+    ::-webkit-scrollbar-thumb { background: #203049; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-icu-bg text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-sky-500/30">
+
+  <header class="bg-icu-panel border-b border-icu-border px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 sticky top-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-400/30 flex items-center justify-center text-rose-400 shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-sm sm:text-base tracking-tight text-white">VentGuard <span class="text-rose-400 font-mono text-xs px-1.5 py-0.5 bg-rose-500/10 rounded border border-rose-500/20">ASSINCRONIAS & ALARMES</span></h1>
+        </div>
+        <p class="text-[11px] text-slate-400">Simulador Diagnóstico e Intervenção • Residência Médica USP-RP</p>
+      </div>
+    </div>
+
+    <div id="alarm-banner" class="flex-1 max-w-xl mx-auto px-3.5 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between gap-2 transition-all">
+      <div class="flex items-center gap-2 min-w-0">
+        <span id="alarm-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
+        <span id="alarm-text" class="font-mono text-xs sm:text-sm font-bold text-emerald-300 truncate">
+          SISTEMA NORMAL — SINCRONIA ADEQUADA
+        </span>
+      </div>
+      <span id="alarm-priority" class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-black/30 text-slate-300 shrink-0">
+        OK
+      </span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btn-audio" type="button"
+        class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-icu-card text-slate-300 border border-icu-border hover:border-slate-500 flex items-center gap-1.5 active:scale-95"
+        title="Ativar ou silenciar bipe sonoro de alarme (Web Audio)">
+        <span id="audio-icon">🔇</span>
+        <span class="hidden sm:inline" id="audio-label">Som Off</span>
+      </button>
+
+      <button id="btn-quiz" type="button"
+        class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/40 hover:bg-indigo-500/30 flex items-center gap-1.5 active:scale-95 transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span id="quiz-btn-label">Modo Desafio</span>
+      </button>
+
+      <button id="btn-freeze" type="button"
+        class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 active:scale-95">
+        <span id="freeze-label">Congelar</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 flex-1">
+
+    <aside class="lg:col-span-3 bg-icu-panel border border-icu-border rounded-2xl p-3 flex flex-col justify-between gap-3">
+      <div class="space-y-3 overflow-y-auto max-h-[calc(100vh-110px)] pr-0.5">
+        <div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1.5 px-1">Linha de Base</div>
+          <div id="list-baseline" class="space-y-1.5"></div>
+        </div>
+
+        <div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-pink-400 mb-1.5 px-1 flex items-center justify-between">
+            <span>Assincronias Paciente-Ventilador</span>
+            <span class="text-[9px] bg-pink-500/15 px-1.5 py-0.5 rounded">6 cenários</span>
+          </div>
+          <div id="list-asynchrony" class="space-y-1.5"></div>
+        </div>
+
+        <div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1.5 px-1 flex items-center justify-between">
+            <span>Problemas Mecânicos / Circuito</span>
+            <span class="text-[9px] bg-amber-500/15 px-1.5 py-0.5 rounded">3 cenários</span>
+          </div>
+          <div id="list-mechanical" class="space-y-1.5"></div>
+        </div>
+      </div>
+
+      <div class="pt-2.5 border-t border-icu-border flex items-center justify-between px-1">
+        <div>
+          <div class="text-xs font-semibold text-pink-300 flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-sm bg-icu-pmus"></span>
+            Curva P<sub>mus</sub> (Esforço)
+          </div>
+          <div class="text-[10px] text-slate-400">Balão esofágico didático</div>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input id="toggle-pmus" type="checkbox" checked class="sr-only peer" />
+          <div class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+    </aside>
+
+    <div class="lg:col-span-9 flex flex-col gap-3">
+
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-3 flex-1">
+
+        <div class="xl:col-span-8 bg-icu-panel border border-icu-border rounded-2xl p-3 flex flex-col justify-between min-h-[410px]">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
+            <div class="flex flex-wrap items-center gap-3 text-xs font-medium">
+              <span class="flex items-center gap-1.5 text-icu-pressure">
+                <span class="w-2.5 h-2.5 rounded-sm bg-icu-pressure"></span> Pressão (cmH₂O)
+              </span>
+              <span class="flex items-center gap-1.5 text-icu-flow">
+                <span class="w-2.5 h-2.5 rounded-sm bg-icu-flow"></span> Fluxo (L/min)
+              </span>
+              <span class="flex items-center gap-1.5 text-icu-volume">
+                <span class="w-2.5 h-2.5 rounded-sm bg-icu-volume"></span> Volume (mL)
+              </span>
+              <span id="legend-pmus" class="flex items-center gap-1.5 text-icu-pmus">
+                <span class="w-2.5 h-2.5 rounded-sm bg-icu-pmus"></span> P<sub>mus</sub> (Esforço)
+              </span>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] font-mono">
+              <span id="badge-mode" class="px-2 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700 font-bold">VCV</span>
+              <span id="badge-status" class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">ANORMAL</span>
+            </div>
+          </div>
+
+          <div id="canvas-container" class="relative w-full flex-1 min-h-[360px] rounded-xl overflow-hidden bg-[#05080d] border border-slate-800">
+            <canvas id="monitor-canvas" class="block w-full h-full"></canvas>
+
+            <div id="resolved-toast" class="hidden absolute bottom-3 left-3 right-3 bg-emerald-950/90 backdrop-blur-md border border-emerald-400/60 text-emerald-200 px-3.5 py-2.5 rounded-xl text-xs shadow-xl flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold">✓</span>
+                <div>
+                  <div class="font-bold text-emerald-300">Problema / Assincronia Corrigida com Sucesso!</div>
+                  <div id="resolved-detail" class="text-[11px] text-emerald-100/85">Os parâmetros ajustados restauraram a sincronia e a ventilação segura.</div>
+                </div>
+              </div>
+              <button type="button" id="btn-reset-problem" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 font-semibold shrink-0">
+                Simular Novamente
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="xl:col-span-4 flex flex-col gap-3">
+          <div class="bg-icu-panel border border-icu-border rounded-2xl p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Monitorização Numérica</span>
+              <span class="text-[11px] font-mono text-teal-400">SpO₂: <strong id="num-spo2" class="text-base">97%</strong></span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 text-center">
+              <div id="box-num-ppico" class="bg-icu-card border border-icu-border rounded-xl p-2">
+                <div class="text-[10px] text-amber-400 font-semibold">P<sub>pico</sub></div>
+                <div id="num-ppico" class="font-mono text-lg font-bold text-amber-300">20</div>
+                <div class="text-[9px] text-slate-500">cmH₂O</div>
+              </div>
+              <div id="box-num-pplat" class="bg-icu-card border border-icu-border rounded-xl p-2">
+                <div class="text-[10px] text-amber-400 font-semibold">P<sub>platô</sub></div>
+                <div id="num-pplat" class="font-mono text-lg font-bold text-amber-300">14</div>
+                <div class="text-[9px] text-slate-500">cmH₂O</div>
+              </div>
+              <div id="box-num-autopeep" class="bg-icu-card border border-icu-border rounded-xl p-2">
+                <div class="text-[10px] text-rose-400 font-semibold">Auto-PEEP</div>
+                <div id="num-autopeep" class="font-mono text-lg font-bold text-slate-200">0.0</div>
+                <div class="text-[9px] text-slate-500">cmH₂O</div>
+              </div>
+              <div class="bg-icu-card border border-icu-border rounded-xl p-2">
+                <div class="text-[10px] text-sky-400 font-semibold">V<sub>ti</sub> Insp</div>
+                <div id="num-vti" class="font-mono text-lg font-bold text-sky-300">450</div>
+                <div class="text-[9px] text-slate-500">mL</div>
+              </div>
+              <div id="box-num-vte" class="bg-icu-card border border-icu-border rounded-xl p-2">
+                <div class="text-[10px] text-sky-400 font-semibold">V<sub>te</sub> Exp</div>
+                <div id="num-vte" class="font-mono text-lg font-bold text-sky-300">450</div>
+                <div id="num-leak-pct" class="text-[9px] text-slate-500">Vaz: 0%</div>
+              </div>
+              <div id="box-num-fr" class="bg-icu-card border border-icu-border rounded-xl p-2">
+                <div class="text-[10px] text-teal-400 font-semibold">FR Total</div>
+                <div id="num-fr" class="font-mono text-lg font-bold text-teal-300">15</div>
+                <div id="num-fr-set" class="text-[9px] text-slate-500">Prog: 15</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-icu-panel border border-icu-border rounded-2xl p-3 flex-1 flex flex-col justify-between">
+            <div id="didactic-panel" class="space-y-2.5 overflow-y-auto max-h-[300px] pr-0.5">
+              <div class="flex items-center justify-between gap-2 border-b border-icu-border pb-2">
+                <h2 id="doc-title" class="font-bold text-sm text-white">Ventilação Sincronizada</h2>
+                <span id="doc-tag" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 shrink-0">Normal</span>
+              </div>
+
+              <div class="bg-icu-card/80 border border-icu-border rounded-xl p-2.5">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-sky-400 mb-0.5">1. Como Identificar no Gráfico</div>
+                <p id="doc-curve" class="text-xs text-slate-200 leading-relaxed"></p>
+              </div>
+
+              <div class="bg-icu-card/80 border border-icu-border rounded-xl p-2.5">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-0.5">2. Fisiopatologia & Causa</div>
+                <p id="doc-cause" class="text-xs text-slate-300 leading-relaxed"></p>
+              </div>
+
+              <div class="bg-indigo-950/50 border border-indigo-500/35 rounded-xl p-2.5">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-300 mb-0.5">3. Conduta / Gabarito USP-RP</div>
+                <p id="doc-fix" class="text-xs text-indigo-100 leading-relaxed"></p>
+              </div>
+            </div>
+
+            <div id="quiz-panel" class="hidden space-y-2.5">
+              <div class="flex items-center justify-between border-b border-indigo-500/30 pb-2">
+                <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider">Desafio Diagnóstico</span>
+                <span id="quiz-score" class="text-xs font-mono text-emerald-400 font-bold">Acertos: 0/0</span>
+              </div>
+              <p class="text-xs text-slate-300">
+                Analise atentamente as curvas de <strong>Pressão, Fluxo e Volume</strong> (oculte P<sub>mus</sub> se quiser nível avançado) e identifique o problema ativo:
+              </p>
+              <div id="quiz-options" class="grid grid-cols-1 gap-1.5"></div>
+              <div id="quiz-feedback" class="hidden text-xs p-2.5 rounded-xl border"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="bg-icu-panel border border-icu-border rounded-2xl p-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-icu-border">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Painel de Intervenção (Ajuste para Corrigir o Problema)</h3>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" id="act-cuff" class="action-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/35 hover:bg-amber-500/25 active:scale-95 transition-all">
+              🩺 Insuflar Cuff / Checar Circuito
+            </button>
+            <button type="button" id="act-suction" class="action-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-teal-500/15 text-teal-300 border border-teal-500/35 hover:bg-teal-500/25 active:scale-95 transition-all">
+              💨 Aspirar TOT / Broncodilatador
+            </button>
+            <button type="button" id="act-drain" class="action-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/35 hover:bg-sky-500/25 active:scale-95 transition-all">
+              💧 Drenar Condensado (Água)
+            </button>
+            <button type="button" id="act-thoraco" class="action-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/35 hover:bg-rose-500/25 active:scale-95 transition-all">
+              🚨 Toracocentese / Reposicionar TOT
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5">
+          <div class="bg-icu-card border border-icu-border rounded-xl p-2 flex flex-col justify-between">
+            <span class="text-[11px] font-bold text-slate-300">Modo</span>
+            <div class="grid grid-cols-3 gap-1 my-1 bg-icu-bg p-1 rounded-lg border border-icu-border">
+              <button type="button" data-mode="VCV" class="vmode-btn py-1 rounded text-[11px] font-bold bg-sky-500 text-slate-950">VCV</button>
+              <button type="button" data-mode="PCV" class="vmode-btn py-1 rounded text-[11px] font-bold text-slate-400">PCV</button>
+              <button type="button" data-mode="PSV" class="vmode-btn py-1 rounded text-[11px] font-bold text-slate-400">PSV</button>
+            </div>
+            <span id="hint-mode" class="text-[10px] text-slate-500 font-mono">Fluxo Fixo</span>
+          </div>
+
+          <div id="ctrl-box-flow" class="bg-icu-card border border-icu-border rounded-xl p-2 flex flex-col justify-between">
+            <div class="flex justify-between items-center">
+              <label for="in-flow" class="text-[11px] font-bold text-teal-300">Fluxo Insp.</label>
+              <span class="font-mono text-xs font-bold text-teal-300"><span id="val-flow">45</span> L/m</span>
+            </div>
+            <input id="in-flow" type="range" min="20" max="90" step="5" value="45" class="w-full my-1.5" />
+            <div class="flex justify-between text-[9px] text-slate-500 font-mono"><span>20</span><span>60</span><span>90</span></div>
+          </div>
+
+          <div id="ctrl-box-ti" class="bg-icu-card border border-icu-border rounded-xl p-2 flex flex-col justify-between">
+            <div class="flex justify-between items-center">
+              <label for="in-ti" class="text-[11px] font-bold text-purple-300">Tempo Insp (Ti)</label>
+              <span class="font-mono text-xs font-bold text-purple-300"><span id="val-ti">1.0</span> s</span>
+            </div>
+            <input id="in-ti" type="range" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full my-1.5" />
+            <div class="flex justify-between text-[9px] text-slate-500 font-mono"><span>0.5s</span><span>1.0s</span><span>2.0s</span></div>
+          </div>
+
+          <div class="bg-icu-card border border-icu-border rounded-xl p-2 flex flex-col justify-between">
+            <div class="flex justify-between items-center">
+              <label for="in-trig" class="text-[11px] font-bold text-pink-300">Sensib. Disparo</label>
+              <span class="font-mono text-xs font-bold text-pink-300"><span id="val-trig">2.0</span> L/m</span>
+            </div>
+            <input id="in-trig" type="range" min="0.5" max="8.0" step="0.5" value="2.0" class="w-full my-1.5" />
+            <div class="flex justify-between text-[9px] text-slate-500 font-mono"><span>0.5 (Sens)</span><span>8.0 (Duro)</span></div>
+          </div>
+
+          <div class="bg-icu-card border border-icu-border rounded-xl p-2 flex flex-col justify-between">
+            <div class="flex justify-between items-center">
+              <label for="in-peep" class="text-[11px] font-bold text-amber-300">PEEP Ext.</label>
+              <span class="font-mono text-xs font-bold text-amber-300"><span id="val-peep">5</span> cmH₂O</span>
+            </div>
+            <input id="in-peep" type="range" min="0" max="18" step="1" value="5" class="w-full my-1.5" />
+            <div class="flex justify-between text-[9px] text-slate-500 font-mono"><span>0</span><span>8</span><span>18</span></div>
+          </div>
+
+          <div id="ctrl-box-cycle" class="bg-icu-card border border-icu-border rounded-xl p-2 flex flex-col justify-between opacity-50">
+            <div class="flex justify-between items-center">
+              <label for="in-cycle" class="text-[11px] font-bold text-sky-300">Ciclagem PSV</label>
+              <span class="font-mono text-xs font-bold text-sky-300"><span id="val-cycle">25</span>%</span>
+            </div>
+            <input id="in-cycle" type="range" min="5" max="60" step="5" value="25" class="w-full my-1.5" disabled />
+            <div class="flex justify-between text-[9px] text-slate-500 font-mono"><span>5% (Tardia)</span><span>60% (Precoce)</span></div>
+          </div>
+
+          <div class="bg-icu-card border border-icu-border rounded-xl p-2 flex flex-col justify-between">
+            <div class="flex justify-between items-center">
+              <label for="in-fr" class="text-[11px] font-bold text-slate-200">FR Prog.</label>
+              <span class="font-mono text-xs font-bold text-slate-200"><span id="val-fr">14</span> irpm</span>
+            </div>
+            <input id="in-fr" type="range" min="8" max="28" step="1" value="14" class="w-full my-1.5" />
+            <div class="flex justify-between text-[9px] text-slate-500 font-mono"><span>8</span><span>16</span><span>28</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    (function liberarRolagem() {
+      const style = document.createElement('style');
+      style.textContent = `
+        html, body {
+          overflow: auto !important;
+          overflow-x: auto !important;
+          overflow-y: auto !important;
+          height: auto !important;
+          min-height: 100% !important;
+          position: static !important;
+          touch-action: pan-x pan-y !important;
+        }
+      `;
+      document.head.appendChild(style);
+    })();
+
+    const SCENARIOS = [
+      {
+        id: 'normal',
+        group: 'baseline',
+        name: 'Normal / Sincronizado',
+        shortDesc: 'Curvas fisiológicas de referência',
+        tag: 'Sincronia OK',
+        alarmText: 'SISTEMA NORMAL — SINCRONIA ADEQUADA',
+        alarmLevel: 'ok',
+        setup: {
+          mode: 'VCV', flow: 45, ti: 1.0, trig: 2.0, peep: 5, cycle: 25, fr: 14,
+          patientDriveFR: 14, neuralTi: 1.0, compliance: 55, resistance: 8,
+          leakSeverity: 0, condensate: false, obstruction: 0, pneumothorax: false
+        },
+        curveDesc: 'Disparo suave sem deflexão profunda; subida linear de pressão em VCV (ou quadrada em PCV/PSV); fluxo expiratório retorna completamente a zero antes do próximo ciclo; volume retorna a zero.',
+        causeDesc: 'Tempo inspiratório neural do paciente alinhado ao tempo do ventilador, ausência de aprisionamento aéreo e circuito íntegro.',
+        fixDesc: 'Manter vigilância de ventilação protetora (Vt 6 mL/kg, Pplatô < 30 cmH₂O, Driving Pressure < 15 cmH₂O).'
+      },
+      {
+        id: 'double_trigger',
+        group: 'asynchrony',
+        name: 'Duplo Disparo (Breath Stacking)',
+        shortDesc: '2 ciclos seguidos sem expiração',
+        tag: 'Assincronia de Ciclagem',
+        alarmText: 'ALARME: PRESSÃO ALTA / EMPILHAMENTO DE VOLUME (DUPLO DISPARO)',
+        alarmLevel: 'high',
+        setup: {
+          mode: 'VCV', flow: 55, ti: 0.6, trig: 2.0, peep: 5, cycle: 25, fr: 14,
+          patientDriveFR: 16, neuralTi: 1.35, compliance: 45, resistance: 9,
+          leakSeverity: 0, condensate: false, obstruction: 0, pneumothorax: false
+        },
+        curveDesc: 'Dois ciclos inspiratórios consecutivos sem fase expiratória entre eles! A curva de Volume sobe duas vezes (empilhamento / breath stacking), dobrando o Vt entregue e gerando pico elevado de pressão no 2º ciclo.',
+        causeDesc: 'O tempo inspiratório do ventilador (Ti = 0,6s) é muito menor que o tempo inspiratório neural do paciente (Ti neural = 1,35s). Ao encerrar o 1º ciclo, o paciente ainda está inspirando fortemente (veja Pmus), disparando imediatamente um 2º ciclo.',
+        fixDesc: 'Aumentar o Tempo Inspiratório (Ti para ≥ 1,1–1,2s), reduzir o fluxo inspiratório (em VCV) ou mudar para PCV/PSV com ajuste adequado de ciclagem. (Cobrado na USP-RP pelo risco grave de volutrauma/barotrauma!)'
+      },
+      {
+        id: 'ineffective_effort',
+        group: 'asynchrony',
+        name: 'Esforço Ineficaz (Missed Trigger)',
+        shortDesc: 'Tentativa de disparo falha na expiração',
+        tag: 'Assincronia de Disparo',
+        alarmText: 'ALERTA: ESFORÇO INEFICAZ DETECTADO (AUTO-PEEP / DISPARO DURO)',
+        alarmLevel: 'med',
+        setup: {
+          mode: 'VCV', flow: 40, ti: 1.1, trig: 5.5, peep: 2, cycle: 25, fr: 20,
+          patientDriveFR: 22, neuralTi: 0.9, compliance: 70, resistance: 24,
+          leakSeverity: 0, condensate: false, obstruction: 0, pneumothorax: false
+        },
+        curveDesc: 'Durante a fase expiratória, observa-se uma deflexão positiva súbita na curva de Fluxo (em direção ao zero, sem cruzá-lo) acompanhada de leve queda na Pressão e deflexão negativa em Pmus, mas o ventilador NÃO dispara o ciclo.',
+        causeDesc: 'Classicamente ocorre em pacientes com DPOC e Auto-PEEP elevada (hiperinsuflação dinâmica) ou sensibilidade mal ajustada (muito pouco sensível, ex: 5,5 L/min). O paciente precisa vencer toda a Auto-PEEP antes de gerar fluxo inspiratório no circuito.',
+        fixDesc: '1) Reduzir a Auto-PEEP: diminuir FR (ex: 12–14 irpm) e aumentar fluxo inspiratório para prolongar o tempo expiratório; 2) Aumentar a PEEP externa até ~75–85% da Auto-PEEP (ex: 6–8 cmH₂O) para reduzir o limiar de disparo; 3) Deixar disparo mais sensível (1–2 L/min).'
+      },
+      {
+        id: 'flow_starvation',
+        group: 'asynchrony',
+        name: 'Fome de Fluxo (Flow Starvation)',
+        shortDesc: 'Curva de pressão escavada / côncava',
+        tag: 'Assincronia de Fluxo',
+        alarmText: 'ALERTA: ASSINCRONIA DE FLUXO INSPIRATÓRIO INSUFICIENTE',
+        alarmLevel: 'med',
+        setup: {
+          mode: 'VCV', flow: 25, ti: 1.3, trig: 2.0, peep: 5, cycle: 25, fr: 16,
+          patientDriveFR: 20, neuralTi: 1.1, compliance: 50, resistance: 10,
+          leakSeverity: 0, condensate: false, obstruction: 0, pneumothorax: false
+        },
+        curveDesc: 'Em VCV, a curva de Pressão apresenta aspecto côncavo para cima ("escavada" ou formato de U/taça) durante a inspiração, em vez da rampa ascendente retilínea esperada.',
+        causeDesc: 'O paciente apresenta alto drive respiratório (fome de ar/acidose/febre), mas o ventilador em VCV trava o fluxo em um valor fixo baixo (25 L/min). O paciente "suga" o circuito além do fluxo ofertado, negativando a pressão das vias aéreas.',
+        fixDesc: 'Aumentar o Fluxo Inspiratório no VCV (para ≥ 55–65 L/min) ou alternar para modo controlado/suportado a pressão (PCV ou PSV), que oferece fluxo livre conforme a demanda do paciente.'
+      },
+      {
+        id: 'auto_trigger',
+        group: 'asynchrony',
+        name: 'Autodisparo (Auto-Triggering)',
+        shortDesc: 'Ciclos disparados sem esforço do paciente',
+        tag: 'Assincronia de Disparo',
+        alarmText: 'ALARME: FREQUÊNCIA RESPIRATÓRIA ALTA / AUTODISPARO',
+        alarmLevel: 'high',
+        setup: {
+          mode: 'PSV', flow: 50, ti: 1.0, trig: 0.5, peep: 5, cycle: 25, fr: 12,
+          patientDriveFR: 12, neuralTi: 1.0, compliance: 55, resistance: 8,
+          leakSeverity: 0, condensate: true, obstruction: 0, pneumothorax: false
+        },
+        curveDesc: 'O ventilador dispara ciclos rápidos e irregulares (FR total > 28–32 irpm) SEM nenhuma deflexão negativa prévia na Pressão e com Pmus totalmente plana (sem esforço muscular do paciente).',
+        causeDesc: 'Artefatos no circuito simulam fluxo/queda de pressão e enganam um disparo muito sensível (0,5 L/min). Principais causas: condensado (água) oscilando na traqueia do circuito, vazamento no cuff ou batimentos cardíacos hiperdinâmicos.',
+        fixDesc: '1) Drenar o condensado (água) acumulado no circuito do ventilador; 2) Reduzir a sensibilidade do disparo (aumentar limiar de 0,5 para 2,0–3,0 L/min); 3) Verificar vazamentos no cuff.'
+      },
+      {
+        id: 'premature_cycling',
+        group: 'asynchrony',
+        name: 'Ciclagem Prematura',
+        shortDesc: 'Corte precoce com puxada na expiração',
+        tag: 'Assincronia de Ciclagem',
+        alarmText: 'ALERTA: CICLAGEM PREMATURA (Ti VENT < Ti NEURAL)',
+        alarmLevel: 'med',
+        setup: {
+          mode: 'PSV', flow: 50, ti: 0.7, trig: 2.0, peep: 5, cycle: 55, fr: 14,
+          patientDriveFR: 16, neuralTi: 1.25, compliance: 45, resistance: 9,
+          leakSeverity: 0, condensate: false, obstruction: 0, pneumothorax: false
+        },
+        curveDesc: 'Logo após o ventilador ciclar para expiração, a curva de Fluxo expiratório sofre uma deflexão abrupta para cima (em direção a zero) e a Pressão cai brevemente abaixo da PEEP, pois o diafragma ainda está contraindo.',
+        causeDesc: 'Em PSV, o critério de ciclagem foi ajustado muito alto (55% do pico de fluxo), fazendo o ventilador encerrar a inspiração precocemente enquanto o paciente ainda mantém contração diafragmática (forma branda do duplo disparo).',
+        fixDesc: 'Reduzir a porcentagem do critério de ciclagem em PSV (de 55% para 20–25%) para prolongar o tempo inspiratório mecânico até o fim do esforço neural.'
+      },
+      {
+        id: 'delayed_cycling',
+        group: 'asynchrony',
+        name: 'Ciclagem Tardia',
+        shortDesc: 'Pico de pressão no fim da inspiração',
+        tag: 'Assincronia de Ciclagem',
+        alarmText: 'ALERTA: CICLAGEM TARDIA (SPIKE PRESSÓRICO FINAL)',
+        alarmLevel: 'med',
+        setup: {
+          mode: 'PSV', flow: 50, ti: 1.5, trig: 2.0, peep: 5, cycle: 5, fr: 14,
+          patientDriveFR: 14, neuralTi: 0.85, compliance: 68, resistance: 22,
+          leakSeverity: 0, condensate: false, obstruction: 0, pneumothorax: false
+        },
+        curveDesc: 'No terço final da inspiração, observa-se um pico agudo ("spike" ou "chifre") na curva de Pressão acima do platô programado, coincidindo com o relaxamento muscular ou início de esforço expiratório ativo do paciente.',
+        causeDesc: 'Muito frequente em DPOC ventilado em PSV com critério de ciclagem baixo (5% do pico de fluxo). Como a resistência é alta, o fluxo cai lentamente e o ventilador continua insuflando ar mesmo após o paciente já ter terminado de inspirar.',
+        fixDesc: 'Aumentar o critério de ciclagem em PSV (de 5% para 35–50% do pico de fluxo) para encerrar a inspiração mais cedo e sincronizar com o término neural.'
+      },
+      {
+        id: 'circuit_leak',
+        group: 'mechanical',
+        name: 'Vazamento / Cuff Furado (Perda de Ar)',
+        shortDesc: 'Vte << Vti e curva de volume não fecha',
+        tag: 'Problema de Circuito',
+        alarmText: 'ALARME: VAZAMENTO NO CIRCUITO / VOLUME MINUTO BAIXO',
+        alarmLevel: 'high',
+        setup: {
+          mode: 'VCV', flow: 45, ti: 1.0, trig: 2.0, peep: 5, cycle: 25, fr: 14,
+          patientDriveFR: 14, neuralTi: 1.0, compliance: 55, resistance: 8,
+          leakSeverity: 0.48, condensate: false, obstruction: 0, pneumothorax: false
+        },
+        curveDesc: 'Na curva de Volume, o traçado expiratório desce até a metade e para em um platô ou cai bruscamente a zero sem completar a expiração: Volume Expirado (Vte) é muito menor que o Inspirado (Vti). Dificuldade em sustentar PEEP.',
+        causeDesc: 'Perda de ar no sistema por balonete (cuff) do TOT desinsuflado ou furado, desconexão parcial de traqueia, furo no filtro HME ou fístula broncopleural de alto débito.',
+        fixDesc: 'Insuflar o cuff (checar pressão com cufômetro: 20–30 cmH₂O) e revisar todas as conexões do circuito ventilatório.'
+      },
+      {
+        id: 'airway_obstruction',
+        group: 'mechanical',
+        name: 'Secreção / Broncoespasmo / Tubo Dobrado',
+        shortDesc: 'Ppico alta com Pplatô normal (Resistência)',
+        tag: 'Aumento de Resistência',
+        alarmText: 'ALARME: PRESSÃO DE PICO ALTA (> 38 cmH₂O) — RESISTÊNCIA ELEVADA',
+        alarmLevel: 'high',
+        setup: {
+          mode: 'VCV', flow: 50, ti: 1.0, trig: 2.0, peep: 5, cycle: 25, fr: 14,
+          patientDriveFR: 14, neuralTi: 1.0, compliance: 55, resistance: 36,
+          leakSeverity: 0, condensate: false, obstruction: 1, pneumothorax: false
+        },
+        curveDesc: 'Elevação acentuada da Pressão de Pico (Ppico > 38–42 cmH₂O), enquanto a Pressão de Platô permanece normal (< 22 cmH₂O), gerando gradiente (Ppico - Pplat) > 15 cmH₂O. Fluxo expiratório com pico achatado e retorno lento.',
+        causeDesc: 'Aumento agudo da resistência das vias aéreas: rolha de secreção no TOT, broncoespasmo grave, paciente mordendo o tubo ou acotovelamento do circuito.',
+        fixDesc: 'Aspiração traqueal do TOT, broncodilatador inalatório, checar mordedura (cânula de Guedel/sedação) e inspecionar circuito.'
+      },
+      {
+        id: 'pneumothorax',
+        group: 'mechanical',
+        name: 'Pneumotórax / Intubação Seletiva',
+        shortDesc: 'Ppico e Pplatô sobem juntas (Complacência)',
+        tag: 'Queda de Complacência',
+        alarmText: 'ALARME CRÍTICO: PRESSÃO ALTA (Ppico E Pplatô) + QUEDA DE SpO₂',
+        alarmLevel: 'high',
+        setup: {
+          mode: 'VCV', flow: 45, ti: 1.0, trig: 2.0, peep: 5, cycle: 25, fr: 16,
+          patientDriveFR: 18, neuralTi: 1.0, compliance: 20, resistance: 10,
+          leakSeverity: 0, condensate: false, obstruction: 0, pneumothorax: true
+        },
+        curveDesc: 'Aumento SIMULTÂNEO e proporcional da Pressão de Pico e da Pressão de Platô (gradiente Ppico - Pplat mantém-se normal < 5 cmH₂O), associado à queda abrupta da SpO₂.',
+        causeDesc: 'Queda súbita da complacência pulmonar/torácica: Pneumotórax hipertensivo (barotrauma/punção venosa central), intubação seletiva (geralmente brônquio fonte direito) ou edema agudo pulmonar fulminante.',
+        fixDesc: 'Exame físico imediato (ausculta assimétrica, hipertimpanismo, desvio de traqueia): se pneumotórax hipertensivo, descompressão imediata + drenagem em selo d’água; se seletiva, tracionar TOT.'
+      }
+    ];
+
+    const state = {
+      activeScenario: SCENARIOS[0],
+      mode: 'VCV',
+      flow: 45,
+      ti: 1.0,
+      trig: 2.0,
+      peep: 5,
+      cycle: 25,
+      fr: 14,
+      patientDriveFR: 14,
+      neuralTi: 1.0,
+      compliance: 55,
+      resistance: 8,
+      leakSeverity: 0,
+      condensate: false,
+      obstruction: 0,
+      pneumothorax: false,
+      showPmus: true,
+      isFrozen: false,
+      audioEnabled: false,
+      quizMode: false,
+      quizAnswered: false,
+      quizTotal: 0,
+      quizCorrect: 0,
+      isResolved: false,
+      metrics: {
+        ppico: 20,
+        pplat: 14,
+        autoPeep: 0,
+        vti: 450,
+        vte: 450,
+        leakPct: 0,
+        totalFR: 14,
+        spo2: 97,
+        activeIssue: 'none'
+      },
+      simTime: 0,
+      lastTimestamp: null,
+      history: [],
+      audioCtx: null,
+      lastBeepTime: 0
+    };
+
+    const WINDOW_SEC = 12.0;
+
+    function evaluatePhysiology() {
+      const C_L = state.compliance / 1000;
+      const R = state.resistance;
+      const tau = R * C_L;
+
+      let effTi = state.ti;
+      let vti = 450;
+
+      if (state.mode === 'VCV') {
+        vti = Math.round((state.flow / 60) * state.ti * 1000);
+        vti = Math.min(750, Math.max(280, vti));
+        effTi = (vti / 1000) / (state.flow / 60);
+      } else if (state.mode === 'PCV') {
+        effTi = state.ti;
+        const fill = 1 - Math.exp(-effTi / Math.max(0.12, tau));
+        vti = Math.round(14 * C_L * fill * 1000);
+      } else if (state.mode === 'PSV') {
+        const cycleRatio = state.cycle / 100;
+        effTi = Math.min(2.2, Math.max(0.55, -tau * Math.log(Math.max(0.05, cycleRatio))));
+        const fill = 1 - Math.exp(-effTi / Math.max(0.12, tau));
+        vti = Math.round(14 * C_L * fill * 1000);
+      }
+
+      const baseFR = Math.max(state.fr, state.patientDriveFR);
+      const tTot = 60 / baseFR;
+      const te = Math.max(0.3, tTot - effTi);
+      const decay = Math.exp(-te / Math.max(0.15, tau));
+      let autoPeep = ((vti / 1000) * decay) / Math.max(0.08, 1 - decay) / C_L;
+      if (autoPeep < 0.3) autoPeep = 0;
+      autoPeep = Math.min(14, autoPeep);
+
+      const totalPeep = state.peep + autoPeep;
+      let pplat = ((vti / 1000) / C_L) + totalPeep;
+      let ppico = state.mode === 'VCV'
+        ? pplat + R * (state.flow / 60)
+        : state.peep + 14;
+
+      let activeIssue = 'none';
+
+      if (state.pneumothorax) {
+        activeIssue = 'pneumothorax';
+      } else if (state.obstruction > 0 || state.resistance > 28) {
+        activeIssue = 'airway_obstruction';
+      } else if (state.leakSeverity > 0.1) {
+        activeIssue = 'circuit_leak';
+      } else if (state.condensate && state.trig <= 2.5) {
+        activeIssue = 'auto_trigger';
+      } else if ((autoPeep - state.peep > 2.5 && state.patientDriveFR > 16) || state.trig >= 4.5) {
+        activeIssue = 'ineffective_effort';
+      } else if (state.neuralTi - effTi >= 0.42) {
+        activeIssue = 'double_trigger';
+      } else if (state.neuralTi - effTi >= 0.25) {
+        activeIssue = 'premature_cycling';
+      } else if (state.mode !== 'VCV' && (effTi - state.neuralTi >= 0.35)) {
+        activeIssue = 'delayed_cycling';
+      } else if (state.mode === 'VCV' && state.flow < 38 && state.patientDriveFR >= 18) {
+        activeIssue = 'flow_starvation';
+      }
+
+      let totalFR = baseFR;
+      let vte = vti;
+      let leakPct = 0;
+      let spo2 = 97;
+
+      if (activeIssue === 'double_trigger') {
+        vte = Math.round(vti * 1.75);
+        ppico = Math.round(ppico * 1.48);
+        pplat = Math.round(pplat * 1.45);
+        totalFR = Math.round(state.patientDriveFR * 1.5);
+      } else if (activeIssue === 'ineffective_effort') {
+        totalFR = Math.max(state.fr, Math.round(state.patientDriveFR * 0.55));
+        spo2 = 91;
+      } else if (activeIssue === 'auto_trigger') {
+        totalFR = 31;
+        spo2 = 96;
+      } else if (activeIssue === 'circuit_leak') {
+        leakPct = Math.round(state.leakSeverity * 100);
+        vte = Math.round(vti * (1 - state.leakSeverity));
+        ppico = Math.max(8, Math.round(ppico * 0.72));
+        spo2 = 89;
+      } else if (activeIssue === 'pneumothorax') {
+        spo2 = 84;
+      } else if (activeIssue === 'airway_obstruction') {
+        spo2 = 90;
+      }
+
+      state.metrics = {
+        ppico: Math.round(ppico),
+        pplat: Math.round(pplat),
+        autoPeep: Number(autoPeep.toFixed(1)),
+        vti,
+        vte,
+        leakPct,
+        totalFR,
+        spo2,
+        effTi,
+        tau,
+        activeIssue
+      };
+
+      const wasPathological = state.activeScenario.id !== 'normal';
+      state.isResolved = wasPathological && activeIssue === 'none';
+    }
+
+    function sampleSignals(t) {
+      const m = state.metrics;
+      const issue = m.activeIssue;
+      const peep = state.peep;
+
+      let p = peep;
+      let f = 0;
+      let v = 0;
+      let pmus = 0;
+
+      if (issue === 'double_trigger') {
+        const superCycle = 60 / state.patientDriveFR;
+        const localT = t % superCycle;
+        const ti1 = m.effTi;
+        const gap = 0.12;
+        const ti2 = m.effTi;
+
+        if (localT < state.neuralTi) {
+          pmus = -9 * Math.sin((localT / state.neuralTi) * Math.PI);
+        }
+
+        if (localT < ti1) {
+          const u = localT / ti1;
+          f = state.flow;
+          v = m.vti * u;
+          p = peep + (v / m.vti) * (m.ppico * 0.52 - peep) + pmus * 0.4;
+        } else if (localT < ti1 + gap) {
+          const u = (localT - ti1) / gap;
+          f = -18 * (1 - u);
+          v = m.vti * (1 - 0.12 * u);
+          p = peep - 2.5;
+        } else if (localT < ti1 + gap + ti2) {
+          const u = (localT - ti1 - gap) / ti2;
+          f = state.flow;
+          v = m.vti * 0.88 + m.vti * 0.87 * u;
+          p = peep + (v / (m.vti * 1.75)) * (m.ppico - peep);
+        } else {
+          const expT = localT - (ti1 + gap + ti2);
+          const tau = Math.max(0.25, m.tau);
+          const dec = Math.exp(-expT / tau);
+          v = (m.vti * 1.75) * dec;
+          f = -75 * dec;
+          p = peep;
+        }
+        return { p, f, v, pmus };
+      }
+
+      if (issue === 'ineffective_effort') {
+        const ventCycle = 60 / Math.max(10, Math.round(state.patientDriveFR * 0.5));
+        const localT = t % ventCycle;
+        const ti = m.effTi;
+
+        if (localT < ti) {
+          const u = localT / ti;
+          pmus = -6 * Math.sin(u * Math.PI);
+          f = state.flow;
+          v = m.vti * u;
+          p = peep + m.autoPeep + ((m.ppico - peep - m.autoPeep) * u);
+        } else {
+          const expT = localT - ti;
+          const expDur = ventCycle - ti;
+          const tau = Math.max(0.45, m.tau);
+          const dec = Math.exp(-expT / tau);
+          v = m.vti * dec;
+          f = -52 * dec;
+          p = peep;
+
+          const missStart = expDur * 0.42;
+          const missDur = 0.55;
+          if (expT >= missStart && expT <= missStart + missDur) {
+            const mu = (expT - missStart) / missDur;
+            const bump = Math.sin(mu * Math.PI);
+            pmus = -7.5 * bump;
+            f += 22 * bump;
+            p = peep - 1.8 * bump;
+          }
+        }
+        return { p, f, v, pmus };
+      }
+
+      if (issue === 'auto_trigger') {
+        const fastCycle = 60 / 31;
+        const localT = t % fastCycle;
+        const ti = 0.75;
+        pmus = 0;
+        if (localT < ti) {
+          const u = localT / ti;
+          p = peep + 13;
+          f = 55 * Math.exp(-u * 1.4);
+          v = 390 * ((1 - Math.exp(-u * 1.4)) / (1 - Math.exp(-1.4)));
+        } else {
+          const expT = localT - ti;
+          const dec = Math.exp(-expT / 0.35);
+          p = peep;
+          f = -45 * dec + Math.sin(t * 24) * 3.5;
+          v = 390 * dec;
+        }
+        return { p, f, v, pmus };
+      }
+
+      const cycleDur = 60 / m.totalFR;
+      const localT = t % cycleDur;
+      const ti = m.effTi;
+
+      if (localT < state.neuralTi) {
+        const nu = localT / state.neuralTi;
+        const amp = issue === 'flow_starvation' ? -12 : -6.5;
+        pmus = amp * Math.sin(nu * Math.PI);
+      }
+
+      if (localT < ti) {
+        const u = localT / ti;
+
+        if (state.mode === 'VCV') {
+          f = state.flow;
+          v = m.vti * u;
+          const baseP = peep + m.autoPeep + ((m.ppico - peep - m.autoPeep) * u);
+
+          if (issue === 'flow_starvation') {
+            const scoop = 8.5 * Math.sin(u * Math.PI);
+            p = Math.max(peep - 2, baseP - scoop);
+          } else {
+            p = baseP;
+          }
+        } else {
+          p = peep + 14;
+          const tau = Math.max(0.18, m.tau);
+          const denom = 1 - Math.exp(-ti / tau);
+          const cur = 1 - Math.exp(-localT / tau);
+          v = m.vti * (cur / Math.max(0.05, denom));
+          f = (65 * Math.exp(-localT / tau));
+
+          if (issue === 'delayed_cycling' && u > 0.65) {
+            const spikeU = (u - 0.65) / 0.35;
+            p += 8.5 * Math.pow(spikeU, 1.6);
+          }
+        }
+      } else {
+        const expT = localT - ti;
+        const tau = Math.max(0.22, m.tau);
+        const dec = Math.exp(-expT / tau);
+
+        p = peep;
+        const peakExp = issue === 'airway_obstruction' ? -30 : -58;
+        f = peakExp * dec;
+
+        if (issue === 'circuit_leak') {
+          const leakedFloor = m.vti * state.leakSeverity;
+          v = leakedFloor + (m.vti - leakedFloor) * dec;
+          p = Math.max(1, peep - 1.8 * (1 - dec));
+        } else {
+          v = m.vti * dec;
+        }
+
+        if (issue === 'premature_cycling' && expT < 0.45) {
+          const pu = expT / 0.45;
+          const pull = Math.sin(pu * Math.PI);
+          f += 28 * pull;
+          p = peep - 2.6 * pull;
+        }
+      }
+
+      return { p, f, v, pmus };
+    }
+
+    const canvas = document.getElementById('monitor-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvas-container');
+      if (!container) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(container.clientWidth * dpr);
+      canvas.height = Math.floor(container.clientHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function drawMonitor() {
+      const container = document.getElementById('canvas-container');
+      const W = container.clientWidth;
+      const H = container.clientHeight;
+      if (W <= 0 || H <= 0) return;
+
+      ctx.clearRect(0, 0, W, H);
+
+      const padL = 44;
+      const padR = 12;
+      const padT = 10;
+      const padB = 10;
+      const plotW = W - padL - padR;
+
+      const tracks = [
+        { key: 'p', label: 'P', min: -5, max: 48, zero: 0, color: '#fbbf24', fill: 'rgba(251, 191, 36, 0.10)', ticks: [0, 20, 40] },
+        { key: 'f', label: 'F', min: -80, max: 80, zero: 0, color: '#2dd4bf', fill: 'rgba(45, 212, 191, 0.08)', ticks: [-60, 0, 60] },
+        { key: 'v', label: 'V', min: 0, max: 900, zero: 0, color: '#38bdf8', fill: 'rgba(56, 189, 248, 0.10)', ticks: [0, 450, 900] }
+      ];
+
+      if (state.showPmus) {
+        tracks.push({ key: 'pmus', label: 'Pmus', min: -16, max: 4, zero: 0, color: '#f472b6', fill: 'rgba(244, 114, 182, 0.12)', ticks: [-12, 0] });
+      }
+
+      const gap = 10;
+      const trackH = (H - padT - padB - gap * (tracks.length - 1)) / tracks.length;
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.07)';
+      ctx.lineWidth = 1;
+      for (let s = 0; s <= WINDOW_SEC; s++) {
+        const x = padL + (s / WINDOW_SEC) * plotW;
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, H - padB);
+        ctx.stroke();
+      }
+
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      tracks.forEach((tr, idx) => {
+        const yTop = padT + idx * (trackH + gap);
+        tr.yTop = yTop;
+        tr.height = trackH;
+
+        ctx.fillStyle = 'rgba(13, 20, 32, 0.55)';
+        ctx.fillRect(padL, yTop, plotW, trackH);
+
+        tr.ticks.forEach(tk => {
+          const norm = (tk - tr.min) / (tr.max - tr.min);
+          const y = yTop + trackH - norm * trackH;
+          ctx.strokeStyle = tk === tr.zero ? 'rgba(148, 163, 184, 0.28)' : 'rgba(148, 163, 184, 0.08)';
+          ctx.lineWidth = tk === tr.zero ? 1.2 : 1;
+          ctx.beginPath();
+          ctx.moveTo(padL, y);
+          ctx.lineTo(padL + plotW, y);
+          ctx.stroke();
+
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(tk.toString(), padL - 6, y);
+        });
+      });
+
+      if (state.history.length < 2) return;
+
+      const latestT = state.history[state.history.length - 1].t;
+      const startT = latestT - WINDOW_SEC;
+      const pts = state.history.filter(pt => pt.t >= startT);
+      if (pts.length < 2) return;
+
+      tracks.forEach(tr => {
+        const zeroNorm = (tr.zero - tr.min) / (tr.max - tr.min);
+        const yZero = tr.yTop + tr.height - zeroNorm * tr.height;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(padL, tr.yTop, plotW, tr.height);
+        ctx.clip();
+
+        ctx.beginPath();
+        pts.forEach((pt, i) => {
+          const x = padL + ((pt.t - startT) / WINDOW_SEC) * plotW;
+          const val = Math.max(tr.min, Math.min(tr.max, pt[tr.key]));
+          const norm = (val - tr.min) / (tr.max - tr.min);
+          const y = tr.yTop + tr.height - norm * tr.height;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+
+        ctx.strokeStyle = tr.color;
+        ctx.lineWidth = 2.1;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        const firstX = padL + ((pts[0].t - startT) / WINDOW_SEC) * plotW;
+        const lastX = padL + ((pts[pts.length - 1].t - startT) / WINDOW_SEC) * plotW;
+        ctx.lineTo(lastX, yZero);
+        ctx.lineTo(firstX, yZero);
+        ctx.closePath();
+        ctx.fillStyle = tr.fill;
+        ctx.fill();
+
+        const lastPt = pts[pts.length - 1];
+        const lastVal = Math.max(tr.min, Math.min(tr.max, lastPt[tr.key]));
+        const lastY = tr.yTop + tr.height - ((lastVal - tr.min) / (tr.max - tr.min)) * tr.height;
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        ctx.restore();
+      });
+    }
+
+    function triggerAlarmSoundIfNeeded(nowSec) {
+      if (!state.audioEnabled) return;
+      const issue = state.metrics.activeIssue;
+      if (issue === 'none') return;
+
+      const interval = state.activeScenario.alarmLevel === 'high' ? 1.8 : 3.2;
+      if (nowSec - state.lastBeepTime < interval) return;
+      state.lastBeepTime = nowSec;
+
+      try {
+        if (!state.audioCtx) {
+          state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const osc = state.audioCtx.createOscillator();
+        const gain = state.audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(state.activeScenario.alarmLevel === 'high' ? 880 : 660, state.audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.04, state.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, state.audioCtx.currentTime + 0.18);
+        osc.connect(gain);
+        gain.connect(state.audioCtx.destination);
+        osc.start();
+        osc.stop(state.audioCtx.currentTime + 0.19);
+      } catch (e) {}
+    }
+
+    function loop(timestamp) {
+      if (!state.lastTimestamp) state.lastTimestamp = timestamp;
+      const dt = Math.min(0.05, (timestamp - state.lastTimestamp) / 1000);
+      state.lastTimestamp = timestamp;
+
+      if (!state.isFrozen) {
+        const steps = 2;
+        const subDt = dt / steps;
+        for (let i = 0; i < steps; i++) {
+          state.simTime += subDt;
+          const s = sampleSignals(state.simTime);
+          state.history.push({ t: state.simTime, ...s });
+        }
+        const cutoff = state.simTime - (WINDOW_SEC + 1.0);
+        while (state.history.length > 0 && state.history[0].t < cutoff) {
+          state.history.shift();
+        }
+        triggerAlarmSoundIfNeeded(timestamp / 1000);
+      }
+
+      drawMonitor();
+      requestAnimationFrame(loop);
+    }
+
+    function refreshUI() {
+      const m = state.metrics;
+      const sc = state.activeScenario;
+
+      document.getElementById('val-flow').textContent = state.flow;
+      document.getElementById('val-ti').textContent = state.ti.toFixed(1);
+      document.getElementById('val-trig').textContent = state.trig.toFixed(1);
+      document.getElementById('val-peep').textContent = state.peep;
+      document.getElementById('val-cycle').textContent = state.cycle;
+      document.getElementById('val-fr').textContent = state.fr;
+      document.getElementById('badge-mode').textContent = state.mode;
+
+      const inFlow = document.getElementById('in-flow');
+      const boxFlow = document.getElementById('ctrl-box-flow');
+      const inTi = document.getElementById('in-ti');
+      const boxTi = document.getElementById('ctrl-box-ti');
+      const inCycle = document.getElementById('in-cycle');
+      const boxCycle = document.getElementById('ctrl-box-cycle');
+
+      if (state.mode === 'VCV') {
+        inFlow.disabled = false; boxFlow.classList.remove('opacity-50');
+        inTi.disabled = false; boxTi.classList.remove('opacity-50');
+        inCycle.disabled = true; boxCycle.classList.add('opacity-50');
+        document.getElementById('hint-mode').textContent = 'Fluxo Fixo';
+      } else if (state.mode === 'PCV') {
+        inFlow.disabled = true; boxFlow.classList.add('opacity-50');
+        inTi.disabled = false; boxTi.classList.remove('opacity-50');
+        inCycle.disabled = true; boxCycle.classList.add('opacity-50');
+        document.getElementById('hint-mode').textContent = 'Ciclado a Tempo';
+      } else {
+        inFlow.disabled = true; boxFlow.classList.add('opacity-50');
+        inTi.disabled = true; boxTi.classList.add('opacity-50');
+        inCycle.disabled = false; boxCycle.classList.remove('opacity-50');
+        document.getElementById('hint-mode').textContent = 'Ciclado a Fluxo';
+      }
+
+      document.querySelectorAll('.vmode-btn').forEach(btn => {
+        if (btn.dataset.mode === state.mode) {
+          btn.className = 'vmode-btn py-1 rounded text-[11px] font-bold bg-sky-500 text-slate-950';
+        } else {
+          btn.className = 'vmode-btn py-1 rounded text-[11px] font-bold text-slate-400 hover:text-white';
+        }
+      });
+
+      document.getElementById('num-ppico').textContent = m.ppico;
+      document.getElementById('num-pplat').textContent = m.pplat;
+      document.getElementById('num-autopeep').textContent = m.autoPeep.toFixed(1);
+      document.getElementById('num-vti').textContent = m.vti;
+      document.getElementById('num-vte').textContent = m.vte;
+      document.getElementById('num-leak-pct').textContent = `Vaz: ${m.leakPct}%`;
+      document.getElementById('num-fr').textContent = m.totalFR;
+      document.getElementById('num-fr-set').textContent = `Prog: ${state.fr}`;
+      document.getElementById('num-spo2').textContent = `${m.spo2}%`;
+
+      highlightBox('box-num-ppico', m.ppico > 35);
+      highlightBox('box-num-pplat', m.pplat > 30);
+      highlightBox('box-num-autopeep', m.autoPeep > 2.5);
+      highlightBox('box-num-vte', m.leakPct > 15 || m.vte > m.vti * 1.3);
+      highlightBox('box-num-fr', Math.abs(m.totalFR - state.fr) >= 6);
+
+      const banner = document.getElementById('alarm-banner');
+      const alarmText = document.getElementById('alarm-text');
+      const alarmDot = document.getElementById('alarm-dot');
+      const alarmPrio = document.getElementById('alarm-priority');
+      const badgeStatus = document.getElementById('badge-status');
+      const resolvedToast = document.getElementById('resolved-toast');
+
+      banner.classList.remove('alarm-high', 'alarm-med', 'border-emerald-500/30', 'bg-emerald-500/10');
+
+      if (m.activeIssue === 'none') {
+        banner.classList.add('border-emerald-500/30', 'bg-emerald-500/10');
+        alarmDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0';
+        alarmText.className = 'font-mono text-xs sm:text-sm font-bold text-emerald-300 truncate';
+        alarmText.textContent = state.isResolved
+          ? `CORRIGIDO: ${sc.name.toUpperCase()} RESOLVIDO!`
+          : 'SISTEMA NORMAL — SINCRONIA ADEQUADA';
+        alarmPrio.textContent = 'OK';
+        badgeStatus.textContent = 'SINCRONIZADO';
+        badgeStatus.className = 'px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold';
+      } else {
+        const isHigh = sc.alarmLevel === 'high';
+        banner.classList.add(isHigh ? 'alarm-high' : 'alarm-med');
+        alarmDot.className = `w-2.5 h-2.5 rounded-full shrink-0 ${isHigh ? 'bg-rose-400 animate-ping' : 'bg-amber-400 animate-ping'}`;
+        alarmText.className = `font-mono text-xs sm:text-sm font-bold truncate ${isHigh ? 'text-rose-200' : 'text-amber-200'}`;
+        alarmText.textContent = state.quizMode
+          ? 'ALARME ATIVO — ANALISE AS CURVAS PARA DIAGNOSTICAR!'
+          : sc.alarmText;
+        alarmPrio.textContent = isHigh ? 'ALTA PRIORIDADE' : 'ATENÇÃO';
+        badgeStatus.textContent = state.quizMode ? 'MODO DESAFIO' : 'ASSINCRONIA / ALARME';
+        badgeStatus.className = `px-2 py-0.5 rounded font-bold ${isHigh ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}`;
+      }
+
+      if (state.isResolved) {
+        resolvedToast.classList.remove('hidden');
+      } else {
+        resolvedToast.classList.add('hidden');
+      }
+
+      document.getElementById('doc-title').textContent = sc.name;
+      document.getElementById('doc-tag').textContent = sc.tag;
+      document.getElementById('doc-curve').textContent = sc.curveDesc;
+      document.getElementById('doc-cause').textContent = sc.causeDesc;
+      document.getElementById('doc-fix').textContent = sc.fixDesc;
+    }
+
+    function highlightBox(id, isAlert) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (isAlert) {
+        el.classList.add('border-rose-500', 'bg-rose-950/25');
+        el.classList.remove('border-icu-border');
+      } else {
+        el.classList.remove('border-rose-500', 'bg-rose-950/25');
+        el.classList.add('border-icu-border');
+      }
+    }
+
+    function selectScenario(id, preserveQuiz = false) {
+      const sc = SCENARIOS.find(s => s.id === id);
+      if (!sc) return;
+      state.activeScenario = sc;
+
+      const s = sc.setup;
+      state.mode = s.mode;
+      state.flow = s.flow;
+      state.ti = s.ti;
+      state.trig = s.trig;
+      state.peep = s.peep;
+      state.cycle = s.cycle;
+      state.fr = s.fr;
+      state.patientDriveFR = s.patientDriveFR;
+      state.neuralTi = s.neuralTi;
+      state.compliance = s.compliance;
+      state.resistance = s.resistance;
+      state.leakSeverity = s.leakSeverity;
+      state.condensate = s.condensate;
+      state.obstruction = s.obstruction;
+      state.pneumothorax = s.pneumothorax;
+
+      document.getElementById('in-flow').value = state.flow;
+      document.getElementById('in-ti').value = state.ti;
+      document.getElementById('in-trig').value = state.trig;
+      document.getElementById('in-peep').value = state.peep;
+      document.getElementById('in-cycle').value = state.cycle;
+      document.getElementById('in-fr').value = state.fr;
+
+      document.querySelectorAll('.sc-btn').forEach(btn => {
+        const active = btn.dataset.id === id && !state.quizMode;
+        if (active) {
+          btn.className = 'sc-btn w-full text-left px-2.5 py-2 rounded-xl border transition-all bg-sky-500/20 border-sky-400/60 text-white shadow-sm';
+        } else {
+          btn.className = 'sc-btn w-full text-left px-2.5 py-2 rounded-xl border transition-all bg-icu-card/70 border-icu-border hover:border-slate-500 text-slate-300';
+        }
+      });
+
+      evaluatePhysiology();
+      refreshUI();
+
+      if (state.quizMode && !preserveQuiz) {
+        buildQuizQuestion();
+      }
+    }
+
+    function toggleQuizMode() {
+      state.quizMode = !state.quizMode;
+      const btn = document.getElementById('btn-quiz');
+      const lbl = document.getElementById('quiz-btn-label');
+      const didactic = document.getElementById('didactic-panel');
+      const quiz = document.getElementById('quiz-panel');
+
+      if (state.quizMode) {
+        lbl.textContent = 'Sair do Desafio';
+        btn.classList.add('bg-indigo-500', 'text-white');
+        didactic.classList.add('hidden');
+        quiz.classList.remove('hidden');
+        pickRandomChallenge();
+      } else {
+        lbl.textContent = 'Modo Desafio';
+        btn.classList.remove('bg-indigo-500', 'text-white');
+        didactic.classList.remove('hidden');
+        quiz.classList.add('hidden');
+        selectScenario(state.activeScenario.id, true);
+      }
+    }
+
+    function pickRandomChallenge() {
+      const candidates = SCENARIOS.filter(s => s.id !== 'normal');
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+      selectScenario(chosen.id, true);
+      buildQuizQuestion();
+    }
+
+    function buildQuizQuestion() {
+      state.quizAnswered = false;
+      const correct = state.activeScenario;
+      const others = SCENARIOS.filter(s => s.id !== correct.id && s.id !== 'normal')
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3);
+      const options = [correct, ...others].sort(() => Math.random() - 0.5);
+
+      const container = document.getElementById('quiz-options');
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.add('hidden');
+
+      container.innerHTML = options.map(opt => `
+        <button type="button" data-ans="${opt.id}"
+          class="quiz-opt w-full text-left px-3 py-2 rounded-xl text-xs font-semibold bg-icu-card border border-icu-border hover:border-indigo-400 text-slate-200 transition-all">
+          ${opt.name}
+        </button>
+      `).join('');
+
+      container.querySelectorAll('.quiz-opt').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (state.quizAnswered) return;
+          state.quizAnswered = true;
+          state.quizTotal++;
+          const pickedId = btn.dataset.ans;
+          const isRight = pickedId === correct.id;
+          if (isRight) state.quizCorrect++;
+
+          document.getElementById('quiz-score').textContent = `Acertos: ${state.quizCorrect}/${state.quizTotal}`;
+
+          container.querySelectorAll('.quiz-opt').forEach(b => {
+            if (b.dataset.ans === correct.id) {
+              b.className = 'quiz-opt w-full text-left px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500/20 border border-emerald-400 text-emerald-200';
+            } else if (b.dataset.ans === pickedId && !isRight) {
+              b.className = 'quiz-opt w-full text-left px-3 py-2 rounded-xl text-xs font-bold bg-rose-500/20 border border-rose-400 text-rose-200';
+            }
+          });
+
+          feedback.classList.remove('hidden');
+          feedback.className = `text-xs p-2.5 rounded-xl border ${isRight ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/60 border-rose-500/40 text-rose-200'}`;
+          feedback.innerHTML = `
+            <div class="font-bold mb-1">${isRight ? '✓ Diagnóstico Correto!' : `✗ Resposta correta: ${correct.name}`}</div>
+            <div class="text-[11px] opacity-90 mb-2">${correct.fixDesc}</div>
+            <button type="button" id="btn-next-quiz" class="px-2.5 py-1 rounded-lg bg-indigo-500 text-white font-bold text-[11px]">
+              Próximo Caso →
+            </button>
+          `;
+          document.getElementById('btn-next-quiz').addEventListener('click', pickRandomChallenge);
+        });
+      });
+    }
+
+    function initEvents() {
+      const groups = {
+        baseline: document.getElementById('list-baseline'),
+        asynchrony: document.getElementById('list-asynchrony'),
+        mechanical: document.getElementById('list-mechanical')
+      };
+
+      SCENARIOS.forEach(sc => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.id = sc.id;
+        btn.className = 'sc-btn w-full text-left px-2.5 py-2 rounded-xl border transition-all bg-icu-card/70 border-icu-border hover:border-slate-500 text-slate-300';
+        btn.innerHTML = `
+          <div class="font-semibold text-xs leading-tight">${sc.name}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">${sc.shortDesc}</div>
+        `;
+        btn.addEventListener('click', () => {
+          if (state.quizMode) toggleQuizMode();
+          selectScenario(sc.id);
+        });
+        groups[sc.group].appendChild(btn);
+      });
+
+      document.getElementById('toggle-pmus').addEventListener('change', (e) => {
+        state.showPmus = e.target.checked;
+        document.getElementById('legend-pmus').classList.toggle('hidden', !state.showPmus);
+      });
+
+      document.querySelectorAll('.vmode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.mode = btn.dataset.mode;
+          evaluatePhysiology();
+          refreshUI();
+        });
+      });
+
+      const sliders = [
+        { id: 'in-flow', key: 'flow', parse: parseInt },
+        { id: 'in-ti', key: 'ti', parse: parseFloat },
+        { id: 'in-trig', key: 'trig', parseFloat },
+        { id: 'in-peep', key: 'peep', parseInt },
+        { id: 'in-cycle', key: 'cycle', parseInt },
+        { id: 'in-fr', key: 'fr', parseInt }
+      ];
+      sliders.forEach(({ id, key, parse }) => {
+        document.getElementById(id).addEventListener('input', (e) => {
+          state[key] = parse(e.target.value);
+          evaluatePhysiology();
+          refreshUI();
+        });
+      });
+
+      document.getElementById('act-cuff').addEventListener('click', () => {
+        state.leakSeverity = 0;
+        evaluatePhysiology();
+        refreshUI();
+      });
+      document.getElementById('act-suction').addEventListener('click', () => {
+        state.obstruction = 0;
+        state.resistance = 9;
+        evaluatePhysiology();
+        refreshUI();
+      });
+      document.getElementById('act-drain').addEventListener('click', () => {
+        state.condensate = false;
+        evaluatePhysiology();
+        refreshUI();
+      });
+      document.getElementById('act-thoraco').addEventListener('click', () => {
+        state.pneumothorax = false;
+        state.compliance = 54;
+        evaluatePhysiology();
+        refreshUI();
+      });
+
+      document.getElementById('btn-reset-problem').addEventListener('click', () => {
+        selectScenario(state.activeScenario.id);
+      });
+
+      document.getElementById('btn-quiz').addEventListener('click', toggleQuizMode);
+
+      document.getElementById('btn-freeze').addEventListener('click', () => {
+        state.isFrozen = !state.isFrozen;
+        document.getElementById('freeze-label').textContent = state.isFrozen ? 'Retomar' : 'Congelar';
+      });
+
+      document.getElementById('btn-audio').addEventListener('click', () => {
+        state.audioEnabled = !state.audioEnabled;
+        document.getElementById('audio-icon').textContent = state.audioEnabled ? '🔊' : '🔇';
+        document.getElementById('audio-label').textContent = state.audioEnabled ? 'Som On' : 'Som Off';
+      });
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    window.onload = function () {
+      initEvents();
+      resizeCanvas();
+      selectScenario('double_trigger');
+
+      for (let t = 0; t < 6.0; t += 0.016) {
+        state.simTime = t;
+        state.history.push({ t, ...sampleSignals(t) });
+      }
+      requestAnimationFrame(loop);
+    };
+  </script>
+</body>
+</html>
