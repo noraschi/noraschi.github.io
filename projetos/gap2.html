@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador Biomecânico do GAP Score — Yilgor et al. (JBJS 2017)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    /* Slider Customization */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: #334155;
+      border-radius: 6px;
+      height: 7px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      background: #7dd3fc;
+    }
+    .glow-cyan {
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.25);
+    }
+    .glow-amber {
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+    }
+    .glow-red {
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.75);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-12">
+
+  <!-- Header & Navigation -->
+  <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-slate-900 text-xl shadow-lg shadow-cyan-500/20">
+          GAP
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            Simulador Biomecânico do GAP Score
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">JBJS 2017</span>
+          </h1>
+          <p class="text-xs text-slate-400">Global Alignment and Proportion Score — Yilgor et al. | Cirurgia de Deformidade Adulta (ASD)</p>
+        </div>
+      </div>
+
+      <!-- Preset Quick Buttons -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1 hidden lg:inline">Presets Clínicos:</span>
+        <button onclick="applyPreset('armadilha')" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 transition-all shadow-sm">
+          Caso Armadilha (GAP 7)
+        </button>
+        <button onclick="applyPreset('ideal')" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 transition-all shadow-sm">
+          Reconstrução Ideal (GAP 1)
+        </button>
+        <button onclick="applyPreset('hiper')" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800 transition-all shadow-sm">
+          Hipercorreção (Risco PJK)
+        </button>
+        <button onclick="applyPreset('ldi_baixo')" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-sky-950/80 hover:bg-sky-900 text-sky-300 border border-sky-800 transition-all shadow-sm">
+          Lordose Alta / LDI Baixo
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+
+    <!-- Top Diagnostic Banner -->
+    <div id="diagnosticBanner" class="glass-card rounded-2xl p-5 md:p-6 transition-all duration-300 border-l-8 border-l-emerald-500 glow-emerald">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        
+        <!-- Score & Category Badge -->
+        <div class="lg:col-span-5 flex items-center gap-5 border-b lg:border-b-0 lg:border-r border-slate-700/60 pb-4 lg:pb-0 lg:pr-6">
+          <div class="flex flex-col items-center justify-center bg-slate-900/90 rounded-2xl p-4 min-w-[110px] border border-slate-700">
+            <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider">GAP Total</span>
+            <span id="scoreValue" class="text-4xl sm:text-5xl font-black text-emerald-400 tracking-tight my-0.5">0</span>
+            <span class="text-[10px] text-slate-500">de 13 PONTOS</span>
+          </div>
+          <div class="space-y-1.5">
+            <div id="categoryBadge" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wide">
+              PROPORCIONADO
+            </div>
+            <h2 id="categoryTitle" class="text-lg font-bold text-white leading-tight">Alinhamento Biomecânico Harmonioso</h2>
+            <p id="categoryRisk" class="text-xs text-slate-300 leading-relaxed">
+              Risco estimado de complicação mecânica / falha de síntese: <strong class="text-emerald-400 font-bold">~6% em 2 anos</strong>.
+            </p>
+          </div>
+        </div>
+
+        <!-- Derived Anatomical Targets -->
+        <div class="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-800">
+            <span class="text-[11px] text-slate-400 block font-medium">Versão Pélvica (PT)</span>
+            <span id="valPT" class="text-lg font-bold text-cyan-400">18°</span>
+            <span id="subPT" class="text-[10px] text-slate-500 block">PI - SS</span>
+          </div>
+
+          <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-800">
+            <span class="text-[11px] text-slate-400 block font-medium">Lordose Ideal (LL)</span>
+            <span id="valIdealLL" class="text-lg font-bold text-slate-200">66.2°</span>
+            <span class="text-[10px] text-slate-500 block">0.62×PI + 29°</span>
+          </div>
+
+          <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-800">
+            <span class="text-[11px] text-slate-400 block font-medium">Declive Ideal (SS)</span>
+            <span id="valIdealSS" class="text-lg font-bold text-slate-200">44.4°</span>
+            <span class="text-[10px] text-slate-500 block">0.59×PI + 9°</span>
+          </div>
+
+          <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-800">
+            <span class="text-[11px] text-slate-400 block font-medium">GSA Ideal</span>
+            <span id="valIdealGSA" class="text-lg font-bold text-slate-200">13.8°</span>
+            <span class="text-[10px] text-slate-500 block">0.48×PI - 15°</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Main Workspace Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left Column: Controls Sliders (5 cols) -->
+      <div class="lg:col-span-5 space-y-4">
+        <div class="glass-card rounded-2xl p-5 border border-slate-800">
+          <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+            <h3 class="font-bold text-white text-base flex items-center gap-2">
+              <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+              Parâmetros Espinopélvicos do Paciente
+            </h3>
+            <span class="text-xs text-slate-400 font-mono">Entrada Biomecânica</span>
+          </div>
+
+          <div class="space-y-4">
+            
+            <!-- Sliders Group -->
+            <!-- 1. Incidência Pélvica (PI) -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <label for="sliderPI" class="font-semibold text-slate-200 flex items-center gap-1.5">
+                  Incidência Pélvica (PI)
+                  <span class="text-[10px] text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-800 font-normal">Anatômico Fixo</span>
+                </label>
+                <div class="flex items-center gap-1">
+                  <input type="number" id="numPI" min="30" max="85" value="60" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-xs font-mono font-bold text-cyan-400 focus:outline-none focus:border-cyan-500">
+                  <span class="text-slate-400 font-mono">°</span>
+                </div>
+              </div>
+              <input type="range" id="sliderPI" min="30" max="85" value="60" step="1" class="w-full">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>30° (Pelve Estreita)</span>
+                <span>85° (Pelve Larga)</span>
+              </div>
+            </div>
+
+            <!-- 2. Declive Sagrado (SS) -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <label for="sliderSS" class="font-semibold text-slate-200">Declive Sagrado (SS)</label>
+                <div class="flex items-center gap-1">
+                  <input type="number" id="numSS" min="5" max="65" value="44" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-xs font-mono font-bold text-cyan-400 focus:outline-none focus:border-cyan-500">
+                  <span class="text-slate-400 font-mono">°</span>
+                </div>
+              </div>
+              <input type="range" id="sliderSS" min="5" max="65" value="44" step="1" class="w-full">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>5° (Retroversão)</span>
+                <span>65° (Anteversão)</span>
+              </div>
+            </div>
+
+            <!-- 3. Lordose Lombar Total (LL L1-S1) -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <label for="sliderLL" class="font-semibold text-slate-200">Lordose Lombar Total (LL L1–S1)</label>
+                <div class="flex items-center gap-1">
+                  <input type="number" id="numLL" min="-10" max="90" value="66" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-xs font-mono font-bold text-cyan-400 focus:outline-none focus:border-cyan-500">
+                  <span class="text-slate-400 font-mono">°</span>
+                </div>
+              </div>
+              <input type="range" id="sliderLL" min="-10" max="90" value="66" step="1" class="w-full">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>-10° (Cifose Lombar)</span>
+                <span>90° (Hiperlordose)</span>
+              </div>
+            </div>
+
+            <!-- 4. Lordose Lombar Baixa (L4-S1) -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <label for="sliderL4S1" class="font-semibold text-slate-200 flex items-center gap-1.5">
+                  Lordose Baixa L4–S1
+                  <span class="text-[10px] text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800 font-normal">Arco Distal</span>
+                </label>
+                <div class="flex items-center gap-1">
+                  <input type="number" id="numL4S1" min="-5" max="65" value="42" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+                  <span class="text-slate-400 font-mono">°</span>
+                </div>
+              </div>
+              <input type="range" id="sliderL4S1" min="-5" max="65" value="42" step="1" class="w-full">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>-5° (Rectificação)</span>
+                <span>65° (Lordose Distal)</span>
+              </div>
+            </div>
+
+            <!-- 5. Alinhamento Espinopélvico Global (GSA) -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <label for="sliderGSA" class="font-semibold text-slate-200 flex items-center gap-1.5">
+                  Alinhamento Global (GSA)
+                  <span class="text-[10px] text-indigo-300 bg-indigo-950 px-1.5 py-0.5 rounded border border-indigo-800 font-normal">C7-Pelve-S1</span>
+                </label>
+                <div class="flex items-center gap-1">
+                  <input type="number" id="numGSA" min="-10" max="45" value="14" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-xs font-mono font-bold text-cyan-400 focus:outline-none focus:border-cyan-500">
+                  <span class="text-slate-400 font-mono">°</span>
+                </div>
+              </div>
+              <input type="range" id="sliderGSA" min="-10" max="45" value="14" step="1" class="w-full">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>-10° (Projeção Post.)</span>
+                <span>45° (Projeção Ant.)</span>
+              </div>
+            </div>
+
+            <!-- 6. Idade do Paciente -->
+            <div class="space-y-1.5 pt-1 border-t border-slate-800">
+              <div class="flex justify-between items-center text-xs">
+                <label for="sliderAge" class="font-semibold text-slate-200">Idade do Paciente</label>
+                <div class="flex items-center gap-1">
+                  <input type="number" id="numAge" min="25" max="85" value="64" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-xs font-mono font-bold text-amber-400 focus:outline-none focus:border-amber-500">
+                  <span class="text-slate-400 font-mono">anos</span>
+                </div>
+              </div>
+              <input type="range" id="sliderAge" min="25" max="85" value="64" step="1" class="w-full">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>25 anos (&lt; 60: 0 pts)</span>
+                <span>85 anos (&ge; 60: 1 pt)</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Visual Model & Breakdown Table (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- SVG Biomechanical Spine Model Card -->
+        <div class="glass-card rounded-2xl p-5 border border-slate-800 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+            <h3 class="font-bold text-white text-base flex items-center gap-2">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+              Modelo Biomecânico de Coluna & Pelve (Tempo Real)
+            </h3>
+            <span class="text-xs text-slate-400 font-mono">Visualização Vetorial</span>
+          </div>
+
+          <!-- SVG Canvas Container -->
+          <div class="relative w-full h-[320px] bg-slate-950/80 rounded-xl border border-slate-800/80 flex items-center justify-center p-2 overflow-hidden">
+            
+            <svg id="spineSvg" class="w-full h-full" viewBox="0 0 420 300" preserveAspectRatio="xMidYMid meet">
+              <!-- Background grid lines -->
+              <defs>
+                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#334155" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.3"/>
+                </pattern>
+                <linearGradient id="l4s1Grad" x1="0%" y1="100%" x2="0%" y2="0%">
+                  <stop offset="0%" stop-color="#22c55e" />
+                  <stop offset="100%" stop-color="#4ade80" />
+                </linearGradient>
+              </defs>
+
+              <rect width="100%" height="100%" fill="url(#grid)" />
+
+              <!-- Vertical Gravity Plumb Line from Femoral Head -->
+              <line id="svgPlumbLine" x1="210" y1="10" x2="210" y2="290" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,4"/>
+              <text x="215" y="285" fill="#64748b" font-size="9" font-family="sans-serif">Linha de Prumo Gravitacional</text>
+
+              <!-- Pelvic Axis & Femoral Head -->
+              <g id="svgPelvisGroup">
+                <!-- Femoral Head Circle -->
+                <circle cx="210" cy="245" r="14" fill="#1e293b" stroke="#38bdf8" stroke-width="2.5"/>
+                <circle cx="210" cy="245" r="3" fill="#38bdf8"/>
+                <text x="180" y="265" fill="#38bdf8" font-size="9" font-weight="bold">Cabeça Femoral</text>
+
+                <!-- Sacral Plate Line & Pelvic Tilt Angle -->
+                <line id="svgSacralPlate" x1="170" y1="215" x2="235" y2="215" stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/>
+                <path id="svgPTPie" d="" fill="rgba(56, 189, 248, 0.2)" stroke="#38bdf8" stroke-width="1"/>
+              </g>
+
+              <!-- Spine Spine Path Groups -->
+              <g id="svgSpineGroup">
+                <!-- Upper Lumbar & Thoracic Spine Arc (L1-C7) -->
+                <path id="svgUpperSpine" d="M 210,215 Q 180,140 210,50" fill="none" stroke="#38bdf8" stroke-width="4.5" stroke-linecap="round"/>
+
+                <!-- Lower Lumbar Arc (L4-S1) Highlighted in Emerald -->
+                <path id="svgLowerSpine" d="M 210,215 Q 190,180 200,145" fill="none" stroke="url(#l4s1Grad)" stroke-width="7" stroke-linecap="round"/>
+
+                <!-- Vertebra Markers -->
+                <!-- S1 Base -->
+                <circle id="markerS1" cx="210" cy="215" r="4" fill="#f59e0b"/>
+                <text id="textS1" x="220" y="218" fill="#f59e0b" font-size="10" font-weight="bold">S1</text>
+
+                <!-- L4 Marker -->
+                <circle id="markerL4" cx="200" cy="155" r="4" fill="#22c55e"/>
+                <text id="textL4" x="210" y="158" fill="#22c55e" font-size="10" font-weight="bold">L4</text>
+
+                <!-- L1 Marker -->
+                <circle id="markerL1" cx="190" cy="115" r="4" fill="#38bdf8"/>
+                <text id="textL1" x="200" y="118" fill="#38bdf8" font-size="10" font-weight="bold">L1</text>
+
+                <!-- C7 Head Marker -->
+                <circle id="markerC7" cx="210" cy="50" r="5" fill="#a855f7"/>
+                <text id="textC7" x="222" y="53" fill="#a855f7" font-size="10" font-weight="bold">C7</text>
+              </g>
+
+              <!-- Dynamic PJK Junctional Stress Alert Overlay -->
+              <g id="svgPJKBadge" opacity="0" transform="translate(130, 25)">
+                <rect width="160" height="26" rx="6" fill="#991b1b" stroke="#ef4444" stroke-width="1.5"/>
+                <text x="80" y="17" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">⚠️ ALERTA: Estresse Juncional (PJK)</text>
+              </g>
+
+            </svg>
+
+            <!-- Legend Overlay -->
+            <div class="absolute bottom-2 left-2 flex items-center gap-3 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 text-[10px]">
+              <div class="flex items-center gap-1">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                <span class="text-slate-300">L4–S1 (LDI)</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span>
+                <span class="text-slate-300">L1–L4</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>
+                <span class="text-slate-300">Pelve (SS/PT)</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Comparative Breakdown Table -->
+        <div class="glass-card rounded-2xl p-5 border border-slate-800">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+            <h3 class="font-bold text-white text-base flex items-center gap-2">
+              <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h55.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              Análise dos 5 Domínios do GAP Score
+            </h3>
+            <span class="text-xs text-slate-400 font-mono">Medido vs. Alvo Proporcionado</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[10px]">
+                  <th class="py-2 px-2 font-semibold">Parâmetro / Domínio</th>
+                  <th class="py-2 px-2 font-semibold text-center">Medido</th>
+                  <th class="py-2 px-2 font-semibold text-center">Faixa Proporcionada (0 pts)</th>
+                  <th class="py-2 px-2 font-semibold text-center">Desvio do Alvo</th>
+                  <th class="py-2 px-2 font-semibold text-right">Pontos GAP</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60 font-medium">
+                
+                <!-- 1. RPV -->
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-2.5 px-2 text-slate-200">
+                    <div class="font-bold">1. Versão Pélvica Relativa (RPV)</div>
+                    <div class="text-[10px] text-slate-400 font-normal">RPV = SS - SS_ideal</div>
+                  </td>
+                  <td id="rowRPV_val" class="py-2.5 px-2 text-center font-mono font-bold text-cyan-400">44.0°</td>
+                  <td id="rowRPV_ideal" class="py-2.5 px-2 text-center text-slate-300 font-mono">37.4° a 49.4°</td>
+                  <td id="rowRPV_dev" class="py-2.5 px-2 text-center font-mono text-slate-300">-0.4°</td>
+                  <td class="py-2.5 px-2 text-right">
+                    <span id="rowRPV_pts" class="inline-block min-w-[28px] text-center px-2 py-0.5 rounded font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">0</span>
+                  </td>
+                </tr>
+
+                <!-- 2. RLL -->
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-2.5 px-2 text-slate-200">
+                    <div class="font-bold">2. Lordose Lombar Relativa (RLL)</div>
+                    <div class="text-[10px] text-slate-400 font-normal">RLL = LL - LL_ideal</div>
+                  </td>
+                  <td id="rowRLL_val" class="py-2.5 px-2 text-center font-mono font-bold text-cyan-400">66.0°</td>
+                  <td id="rowRLL_ideal" class="py-2.5 px-2 text-center text-slate-300 font-mono">52.2° a 77.2°</td>
+                  <td id="rowRLL_dev" class="py-2.5 px-2 text-center font-mono text-slate-300">-0.2°</td>
+                  <td class="py-2.5 px-2 text-right">
+                    <span id="rowRLL_pts" class="inline-block min-w-[28px] text-center px-2 py-0.5 rounded font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">0</span>
+                  </td>
+                </tr>
+
+                <!-- 3. LDI -->
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-2.5 px-2 text-slate-200">
+                    <div class="font-bold">3. Distribuição da Lordose (LDI)</div>
+                    <div class="text-[10px] text-slate-400 font-normal">LDI = (L4–S1 / LL) × 100</div>
+                  </td>
+                  <td id="rowLDI_val" class="py-2.5 px-2 text-center font-mono font-bold text-emerald-400">63.6%</td>
+                  <td class="py-2.5 px-2 text-center text-slate-300 font-mono">50% a 80%</td>
+                  <td id="rowLDI_dev" class="py-2.5 px-2 text-center font-mono text-slate-300">Normal</td>
+                  <td class="py-2.5 px-2 text-right">
+                    <span id="rowLDI_pts" class="inline-block min-w-[28px] text-center px-2 py-0.5 rounded font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">0</span>
+                  </td>
+                </tr>
+
+                <!-- 4. RSA -->
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-2.5 px-2 text-slate-200">
+                    <div class="font-bold">4. Alinhamento Global Relativo (RSA)</div>
+                    <div class="text-[10px] text-slate-400 font-normal">RSA = GSA - GSA_ideal</div>
+                  </td>
+                  <td id="rowRSA_val" class="py-2.5 px-2 text-center font-mono font-bold text-cyan-400">14.0°</td>
+                  <td id="rowRSA_ideal" class="py-2.5 px-2 text-center text-slate-300 font-mono">6.8° a 18.8°</td>
+                  <td id="rowRSA_dev" class="py-2.5 px-2 text-center font-mono text-slate-300">+0.2°</td>
+                  <td class="py-2.5 px-2 text-right">
+                    <span id="rowRSA_pts" class="inline-block min-w-[28px] text-center px-2 py-0.5 rounded font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">0</span>
+                  </td>
+                </tr>
+
+                <!-- 5. Idade -->
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="py-2.5 px-2 text-slate-200">
+                    <div class="font-bold">5. Fator Etário</div>
+                    <div class="text-[10px] text-slate-400 font-normal">Idade &ge; 60 anos adiciona 1 pt</div>
+                  </td>
+                  <td id="rowAge_val" class="py-2.5 px-2 text-center font-mono font-bold text-amber-400">64 anos</td>
+                  <td class="py-2.5 px-2 text-center text-slate-300 font-mono">&lt; 60 anos</td>
+                  <td id="rowAge_dev" class="py-2.5 px-2 text-center font-mono text-slate-300">&ge; 60 anos</td>
+                  <td class="py-2.5 px-2 text-right">
+                    <span id="rowAge_pts" class="inline-block min-w-[28px] text-center px-2 py-0.5 rounded font-bold bg-amber-950 text-amber-400 border border-amber-800">1</span>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Clinical Interpretation & Surgical Planning Box -->
+        <div id="clinicalAdviceCard" class="glass-card rounded-2xl p-5 border border-slate-800 bg-slate-900/80">
+          <h4 class="font-bold text-white text-sm flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Recomendações de Planejamento Cirúrgico & Biomecânica
+          </h4>
+          <p id="clinicalAdviceText" class="text-xs text-slate-300 leading-relaxed">
+            O alinhamento atual é biomecanicamente proporcional ao valor da Incidência Pélvica (PI). A carga vetorial sobre o construto de fixação está equilibrada, minimizando o momento fletor na transição toracolombar.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    // State Object
+    const state = {
+      PI: 60,
+      SS: 44,
+      LL: 66,
+      L4S1: 42,
+      GSA: 14,
+      Age: 64
+    };
+
+    // DOM Elements Cache
+    const el = {
+      sliderPI: document.getElementById('sliderPI'),
+      numPI: document.getElementById('numPI'),
+      sliderSS: document.getElementById('sliderSS'),
+      numSS: document.getElementById('numSS'),
+      sliderLL: document.getElementById('sliderLL'),
+      numLL: document.getElementById('numLL'),
+      sliderL4S1: document.getElementById('sliderL4S1'),
+      numL4S1: document.getElementById('numL4S1'),
+      sliderGSA: document.getElementById('sliderGSA'),
+      numGSA: document.getElementById('numGSA'),
+      sliderAge: document.getElementById('sliderAge'),
+      numAge: document.getElementById('numAge'),
+
+      // Banner Elements
+      scoreValue: document.getElementById('scoreValue'),
+      categoryBadge: document.getElementById('categoryBadge'),
+      categoryTitle: document.getElementById('categoryTitle'),
+      categoryRisk: document.getElementById('categoryRisk'),
+      diagnosticBanner: document.getElementById('diagnosticBanner'),
+      valPT: document.getElementById('valPT'),
+      valIdealLL: document.getElementById('valIdealLL'),
+      valIdealSS: document.getElementById('valIdealSS'),
+      valIdealGSA: document.getElementById('valIdealGSA'),
+
+      // Breakdown Table Elements
+      rowRPV_val: document.getElementById('rowRPV_val'),
+      rowRPV_ideal: document.getElementById('rowRPV_ideal'),
+      rowRPV_dev: document.getElementById('rowRPV_dev'),
+      rowRPV_pts: document.getElementById('rowRPV_pts'),
+
+      rowRLL_val: document.getElementById('rowRLL_val'),
+      rowRLL_ideal: document.getElementById('rowRLL_ideal'),
+      rowRLL_dev: document.getElementById('rowRLL_dev'),
+      rowRLL_pts: document.getElementById('rowRLL_pts'),
+
+      rowLDI_val: document.getElementById('rowLDI_val'),
+      rowLDI_dev: document.getElementById('rowLDI_dev'),
+      rowLDI_pts: document.getElementById('rowLDI_pts'),
+
+      rowRSA_val: document.getElementById('rowRSA_val'),
+      rowRSA_ideal: document.getElementById('rowRSA_ideal'),
+      rowRSA_dev: document.getElementById('rowRSA_dev'),
+      rowRSA_pts: document.getElementById('rowRSA_pts'),
+
+      rowAge_val: document.getElementById('rowAge_val'),
+      rowAge_dev: document.getElementById('rowAge_dev'),
+      rowAge_pts: document.getElementById('rowAge_pts'),
+
+      // Clinical Advice
+      clinicalAdviceText: document.getElementById('clinicalAdviceText'),
+
+      // SVG Elements
+      svgLowerSpine: document.getElementById('svgLowerSpine'),
+      svgUpperSpine: document.getElementById('svgUpperSpine'),
+      svgPelvisGroup: document.getElementById('svgPelvisGroup'),
+      svgPTPie: document.getElementById('svgPTPie'),
+      svgSacralPlate: document.getElementById('svgSacralPlate'),
+      markerS1: document.getElementById('markerS1'),
+      textS1: document.getElementById('textS1'),
+      markerL4: document.getElementById('markerL4'),
+      textL4: document.getElementById('textL4'),
+      markerL1: document.getElementById('markerL1'),
+      textL1: document.getElementById('textL1'),
+      markerC7: document.getElementById('markerC7'),
+      textC7: document.getElementById('textC7'),
+      svgPJKBadge: document.getElementById('svgPJKBadge')
+    };
+
+    // Yilgor et al. JBJS 2017 Core Calculation Engine
+    function calculateGAP() {
+      const PI = state.PI;
+      const SS = state.SS;
+      const LL = state.LL;
+      const L4S1 = state.L4S1;
+      const GSA = state.GSA;
+      const Age = state.Age;
+
+      const PT = PI - SS;
+
+      // Ideal Targets based on PI
+      const SS_ideal = 0.59 * PI + 9;
+      const LL_ideal = 0.62 * PI + 29;
+      const GSA_ideal = 0.48 * PI - 15;
+
+      // 1. Relative Pelvic Version (RPV)
+      const RPV = SS - SS_ideal;
+      let RPV_pts = 0;
+      if (RPV < -15) RPV_pts = 3;
+      else if (RPV >= -15 && RPV < -7) RPV_pts = 2;
+      else if (RPV >= -7 && RPV <= 5) RPV_pts = 0;
+      else if (RPV > 5) RPV_pts = 1;
+
+      // 2. Relative Lumbar Lordosis (RLL)
+      const RLL = LL - LL_ideal;
+      let RLL_pts = 0;
+      if (RLL < -25) RLL_pts = 3;
+      else if (RLL >= -25 && RLL < -14) RLL_pts = 2;
+      else if (RLL >= -14 && RLL <= 11) RLL_pts = 0;
+      else if (RLL > 11) RLL_pts = 3;
+
+      // 3. Lumbar Lordosis Distribution Index (LDI)
+      const LDI = LL > 0 ? (L4S1 / LL) * 100 : 0;
+      let LDI_pts = 0;
+      if (LDI < 40) LDI_pts = 2;
+      else if (LDI >= 40 && LDI < 50) LDI_pts = 1;
+      else if (LDI >= 50 && LDI <= 80) LDI_pts = 0;
+      else if (LDI > 80) LDI_pts = 3;
+
+      // 4. Relative Spinopelvic Alignment (RSA)
+      const RSA = GSA - GSA_ideal;
+      let RSA_pts = 0;
+      if (RSA < -7) RSA_pts = 1;
+      else if (RSA >= -7 && RSA <= 5) RSA_pts = 0;
+      else if (RSA > 5 && RSA <= 18) RSA_pts = 1;
+      else if (RSA > 18) RSA_pts = 3;
+
+      // 5. Age Factor
+      const Age_pts = Age >= 60 ? 1 : 0;
+
+      // Total GAP Score
+      const totalScore = RPV_pts + RLL_pts + LDI_pts + RSA_pts + Age_pts;
+
+      return {
+        PT,
+        SS_ideal,
+        LL_ideal,
+        GSA_ideal,
+        RPV, RPV_pts,
+        RLL, RLL_pts,
+        LDI, LDI_pts,
+        RSA, RSA_pts,
+        Age_pts,
+        totalScore
+      };
+    }
+
+    // UI Sync & Rendering
+    function updateUI() {
+      // Validate L4-S1 <= LL when LL is positive
+      if (state.LL > 0 && state.L4S1 > state.LL) {
+        state.L4S1 = state.LL;
+        el.sliderL4S1.value = state.L4S1;
+        el.numL4S1.value = state.L4S1;
+      }
+
+      // Sync slider & numeric inputs
+      el.sliderPI.value = state.PI; el.numPI.value = state.PI;
+      el.sliderSS.value = state.SS; el.numSS.value = state.SS;
+      el.sliderLL.value = state.LL; el.numLL.value = state.LL;
+      el.sliderL4S1.value = state.L4S1; el.numL4S1.value = state.L4S1;
+      el.sliderGSA.value = state.GSA; el.numGSA.value = state.GSA;
+      el.sliderAge.value = state.Age; el.numAge.value = state.Age;
+
+      const res = calculateGAP();
+
+      // Update Top Derived Card Values
+      el.scoreValue.textContent = res.totalScore;
+      el.valPT.textContent = `${res.PT.toFixed(1)}°`;
+      el.valIdealLL.textContent = `${res.LL_ideal.toFixed(1)}°`;
+      el.valIdealSS.textContent = `${res.SS_ideal.toFixed(1)}°`;
+      el.valIdealGSA.textContent = `${res.GSA_ideal.toFixed(1)}°`;
+
+      // Update Banner Styling & Risk Category
+      const banner = el.diagnosticBanner;
+      const badge = el.categoryBadge;
+      const title = el.categoryTitle;
+      const risk = el.categoryRisk;
+      const scoreVal = el.scoreValue;
+
+      if (res.totalScore <= 2) {
+        // Proportioned
+        banner.className = "glass-card rounded-2xl p-5 md:p-6 transition-all duration-300 border-l-8 border-l-emerald-500 glow-emerald";
+        badge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wide";
+        badge.textContent = "PROPORCIONADO (GAP 0–2)";
+        scoreVal.className = "text-4xl sm:text-5xl font-black text-emerald-400 tracking-tight my-0.5";
+        title.textContent = "Alinhamento Biomecânico Harmonioso";
+        risk.innerHTML = 'Risco estimado de complicação mecânica / falha de síntese: <strong class="text-emerald-400 font-bold">~6% em 2 anos</strong>.';
+      } else if (res.totalScore <= 6) {
+        // Moderately Disproportioned
+        banner.className = "glass-card rounded-2xl p-5 md:p-6 transition-all duration-300 border-l-8 border-l-amber-500 glow-amber";
+        badge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wide";
+        badge.textContent = "MODERADAMENTE DESPROPORCIONADO (GAP 3–6)";
+        scoreVal.className = "text-4xl sm:text-5xl font-black text-amber-400 tracking-tight my-0.5";
+        title.textContent = "Desproporção Biomecânica Moderada";
+        risk.innerHTML = 'Risco estimado de complicação mecânica / PJK / Soltura: <strong class="text-amber-400 font-bold">~47% em 2 anos</strong>.';
+      } else {
+        // Severely Disproportioned
+        banner.className = "glass-card rounded-2xl p-5 md:p-6 transition-all duration-300 border-l-8 border-l-red-500 glow-red";
+        badge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/40 uppercase tracking-wide";
+        badge.textContent = "SEVERAMENTE DESPROPORCIONADO (GAP ≥ 7)";
+        scoreVal.className = "text-4xl sm:text-5xl font-black text-red-400 tracking-tight my-0.5";
+        title.textContent = "Alto Risco de Falha Mecânica Crítica";
+        risk.innerHTML = 'Risco estimado de complicação mecânica / Quebra de Haste / PJK: <strong class="text-red-400 font-bold">~95% em 2 anos</strong>.';
+      }
+
+      // Update Breakdown Table Rows
+      // 1. RPV
+      el.rowRPV_val.textContent = `${state.SS.toFixed(1)}°`;
+      el.rowRPV_ideal.textContent = `${(res.SS_ideal - 7).toFixed(1)}° a ${(res.SS_ideal + 5).toFixed(1)}°`;
+      el.rowRPV_dev.textContent = `${res.RPV >= 0 ? '+' : ''}${res.RPV.toFixed(1)}°`;
+      formatPtsBadge(el.rowRPV_pts, res.RPV_pts);
+
+      // 2. RLL
+      el.rowRLL_val.textContent = `${state.LL.toFixed(1)}°`;
+      el.rowRLL_ideal.textContent = `${(res.LL_ideal - 14).toFixed(1)}° a ${(res.LL_ideal + 11).toFixed(1)}°`;
+      el.rowRLL_dev.textContent = `${res.RLL >= 0 ? '+' : ''}${res.RLL.toFixed(1)}°`;
+      formatPtsBadge(el.rowRLL_pts, res.RLL_pts);
+
+      // 3. LDI
+      el.rowLDI_val.textContent = `${res.LDI.toFixed(1)}%`;
+      el.rowLDI_dev.textContent = res.LDI < 40 ? 'Perda Distal (<40%)' : (res.LDI > 80 ? 'Excessivo (>80%)' : 'Ideal (50-80%)');
+      formatPtsBadge(el.rowLDI_pts, res.LDI_pts);
+
+      // 4. RSA
+      el.rowRSA_val.textContent = `${state.GSA.toFixed(1)}°`;
+      el.rowRSA_ideal.textContent = `${(res.GSA_ideal - 7).toFixed(1)}° a ${(res.GSA_ideal + 5).toFixed(1)}°`;
+      el.rowRSA_dev.textContent = `${res.RSA >= 0 ? '+' : ''}${res.RSA.toFixed(1)}°`;
+      formatPtsBadge(el.rowRSA_pts, res.RSA_pts);
+
+      // 5. Age
+      el.rowAge_val.textContent = `${state.Age} anos`;
+      el.rowAge_dev.textContent = state.Age >= 60 ? '≥ 60 (+1 pt)' : '< 60 (0 pt)';
+      formatPtsBadge(el.rowAge_pts, res.Age_pts);
+
+      // Generate Clinical Advice
+      generateClinicalAdvice(res);
+
+      // Render Dynamic SVG Spine & Pelvis Model
+      renderSVGSpine(res);
+    }
+
+    function formatPtsBadge(elem, pts) {
+      elem.textContent = pts;
+      if (pts === 0) {
+        elem.className = "inline-block min-w-[28px] text-center px-2 py-0.5 rounded font-bold bg-emerald-950 text-emerald-400 border border-emerald-800";
+      } else if (pts === 1) {
+        elem.className = "inline-block min-w-[28px] text-center px-2 py-0.5 rounded font-bold bg-amber-950 text-amber-400 border border-amber-800";
+      } else {
+        elem.className = "inline-block min-w-[28px] text-center px-2 py-0.5 rounded font-bold bg-red-950 text-red-400 border border-red-800";
+      }
+    }
+
+    function generateClinicalAdvice(res) {
+      let advice = [];
+
+      if (res.totalScore <= 2) {
+        advice.push("✅ <strong>Excelente proporção biomecânica:</strong> A lordose restaurada e o alinhamento global correspondem perfeitamente à morfologia da pélvis do paciente.");
+      } else {
+        if (res.RLL_pts > 0) {
+          if (res.RLL < -14) {
+            advice.push(`⚠️ <strong>Hipolordose Relativa (Falta ${(Math.abs(res.RLL)).toFixed(1)}°):</strong> A lordose total é insuficiente para esta Incidência Pélvica (PI = ${state.PI}°). Isso força o paciente a retroverter a pelve (aumentando o PT) para manter a postura ereta.`);
+          } else if (res.RLL > 11) {
+            advice.push(`⚠️ <strong>Hiperlordose iatrogênica (Excesso de ${res.RLL.toFixed(1)}°):</strong> A lordose foi corrigida em excesso para esta PI baixa. Isso gera alto momento de estresse em extensão na transição toracolombar, aumentando drasticamente o risco de PJK (Cifose Juncional Proximal).`);
+          }
+        }
+
+        if (res.LDI_pts > 0) {
+          if (res.LDI < 50) {
+            advice.push(`⚠️ <strong>Falha na Distribuição da Lordose (LDI = ${res.LDI.toFixed(1)}%):</strong> Menos de 50% da lordose está localizada nos níveis L4-S1. O arco distal deve conter idealmente 60-70% da curvatura lombar. Acomodar a lordose nos níveis L1-L3 em vez de L4-S1 recria a deformidade 'Flatback' distal e sobrecarrega a instrumentação posterior.`);
+          } else if (res.LDI > 80) {
+            advice.push(`⚠️ <strong>Lordose Hiperconcentrada em L4-S1 (LDI = ${res.LDI.toFixed(1)}%):</strong> A curvatura distal está excessiva em relação ao segmento L1-L4.`);
+          }
+        }
+
+        if (res.RPV_pts > 0 && res.RPV < -7) {
+          advice.push(`⚠️ <strong>Retroversão Pélvica Compensatória:</strong> O Declive Sagrado (SS = ${state.SS}°) está muito abaixo do ideal (${res.SS_ideal.toFixed(1)}°), indicando um Pelvic Tilt (PT = ${res.PT.toFixed(1)}°) elevado. O paciente está gastando energia muscular significativa para se manter ereto.`);
+        }
+
+        if (res.RSA_pts > 0 && res.RSA > 5) {
+          advice.push(`⚠️ <strong>Desbalanço Sagital Global Anteriorizado (GSA = ${state.GSA}°):</strong> O eixo de gravidade do tronco está projetado anteriormente ao centro de rotação da pélvis.`);
+        }
+      }
+
+      // Recommendation sentence
+      let reco = "<br><br><strong class='text-cyan-400'>Prescrição Cirúrgica Sugerida:</strong> ";
+      if (res.LDI < 50) {
+        reco += "Aumentar o arco de lordose em L4-S1 (ex: osteotomias de pontes, TLIF hiperlordótico ou cage ALIF L5-S1 de 15°-20°) para restaurar o LDI para > 60%. ";
+      }
+      if (res.RLL < -14) {
+        reco += `Adicionar mais ${(Math.abs(res.RLL)).toFixed(0)}° de lordose total no planejamento. `;
+      } else if (res.RLL > 11) {
+        reco += `Reduzir a hiperextensão do segmento L1-L3 em ${(res.RLL).toFixed(0)}° para proteger a junção toracolombar. `;
+      }
+      if (res.totalScore <= 2) {
+        reco += "Manter os objetivos almejados e assegurar fixação sólida na transição lumbossacra.";
+      }
+
+      el.clinicalAdviceText.innerHTML = advice.join("<br>") + reco;
+    }
+
+    // Dynamic Visual SVG Spine Renderer
+    function renderSVGSpine(res) {
+      const centerX = 210;
+      const femoralY = 245;
+
+      // Pelvic tilt / Sacral slope visualization
+      const ptRad = (res.PT * Math.PI) / 180;
+      const ssRad = (state.SS * Math.PI) / 180;
+
+      // Sacral plate line position
+      const sacrumX = centerX - 30 * Math.sin(ptRad);
+      const sacrumY = femoralY - 30 * Math.cos(ptRad);
+
+      // Rotate sacral plate according to SS
+      const plateLength = 35;
+      const p1X = sacrumX - plateLength * Math.cos(ssRad);
+      const p1Y = sacrumY + plateLength * Math.sin(ssRad);
+      const p2X = sacrumX + plateLength * Math.cos(ssRad);
+      const p2Y = sacrumY - plateLength * Math.sin(ssRad);
+
+      el.svgSacralPlate.setAttribute('x1', p1X);
+      el.svgSacralPlate.setAttribute('y1', p1Y);
+      el.svgSacralPlate.setAttribute('x2', p2X);
+      el.svgSacralPlate.setAttribute('y2', p2Y);
+
+      // Sacrum Base S1 Point
+      const s1X = sacrumX;
+      const s1Y = sacrumY;
+      el.markerS1.setAttribute('cx', s1X);
+      el.markerS1.setAttribute('cy', s1Y);
+      el.textS1.setAttribute('x', s1X + 12);
+      el.textS1.setAttribute('y', s1Y + 4);
+
+      // Spine Curvatures
+      // Lower Lumbar Arc (L4-S1): controlled by state.L4S1
+      const l4s1Factor = (state.L4S1 / 60) * 35;
+      const l4X = s1X - l4s1Factor;
+      const l4Y = s1Y - 60;
+
+      const l4ControlX = s1X - l4s1Factor * 1.3;
+      const l4ControlY = s1Y - 30;
+
+      const pathL4S1 = `M ${s1X},${s1Y} Q ${l4ControlX},${l4ControlY} ${l4X},${l4Y}`;
+      el.svgLowerSpine.setAttribute('d', pathL4S1);
+
+      el.markerL4.setAttribute('cx', l4X);
+      el.markerL4.setAttribute('cy', l4Y);
+      el.textL4.setAttribute('x', l4X + 12);
+      el.textL4.setAttribute('y', l4Y + 4);
+
+      // Upper Lumbar Arc (L1-L4): controlled by (LL - L4S1)
+      const l1l4Angle = state.LL - state.L4S1;
+      const l1l4Factor = (l1l4Angle / 40) * 25;
+      const l1X = l4X + l1l4Factor * 0.5;
+      const l1Y = l4Y - 55;
+
+      // Thoracic & C7 Position: controlled by GSA
+      const gsaRad = (state.GSA * Math.PI) / 180;
+      const c7Y = 50;
+      const c7X = centerX + Math.sin(gsaRad) * 160;
+
+      const pathUpper = `M ${l4X},${l4Y} Q ${l4X - l1l4Factor},${l4Y - 30} ${l1X},${l1Y} Q ${l1X + 20},${l1Y - 40} ${c7X},${c7Y}`;
+      el.svgUpperSpine.setAttribute('d', pathUpper);
+
+      el.markerL1.setAttribute('cx', l1X);
+      el.markerL1.setAttribute('cy', l1Y);
+      el.textL1.setAttribute('x', l1X + 12);
+      el.textL1.setAttribute('y', l1Y + 4);
+
+      el.markerC7.setAttribute('cx', c7X);
+      el.markerC7.setAttribute('cy', c7Y);
+      el.textC7.setAttribute('x', c7X + 12);
+      el.textC7.setAttribute('y', c7Y + 4);
+
+      // PJK Junctional Stress Alert Badge
+      if (res.RLL_pts === 3 || res.LDI_pts === 2) {
+        el.svgPJKBadge.setAttribute('opacity', '1');
+      } else {
+        el.svgPJKBadge.setAttribute('opacity', '0');
+      }
+    }
+
+    // Event Listeners for Input Synchronization
+    function bindInput(slider, num, prop) {
+      slider.addEventListener('input', (e) => {
+        state[prop] = parseFloat(e.target.value);
+        updateUI();
+      });
+
+      num.addEventListener('change', (e) => {
+        let val = parseFloat(e.target.value);
+        const min = parseFloat(slider.min);
+        const max = parseFloat(slider.max);
+        if (isNaN(val)) val = min;
+        if (val < min) val = min;
+        if (val > max) val = max;
+        state[prop] = val;
+        updateUI();
+      });
+    }
+
+    bindInput(el.sliderPI, el.numPI, 'PI');
+    bindInput(el.sliderSS, el.numSS, 'SS');
+    bindInput(el.sliderLL, el.numLL, 'LL');
+    bindInput(el.sliderL4S1, el.numL4S1, 'L4S1');
+    bindInput(el.sliderGSA, el.numGSA, 'GSA');
+    bindInput(el.sliderAge, el.numAge, 'Age');
+
+    // Preset Manager
+    window.applyPreset = function(presetKey) {
+      if (presetKey === 'armadilha') {
+        // GAP 7 - Desproporcionado (Armadilha de cirurgia com lordose concentrada alta)
+        state.PI = 62;
+        state.SS = 31;
+        state.LL = 50;
+        state.L4S1 = 21;
+        state.GSA = 22;
+        state.Age = 67;
+      } else if (presetKey === 'ideal') {
+        // GAP 1 - Reconstrução Harmoniosa Proporcionada
+        state.PI = 60;
+        state.SS = 44;
+        state.LL = 66;
+        state.L4S1 = 42;
+        state.GSA = 14;
+        state.Age = 64;
+      } else if (presetKey === 'hiper') {
+        // GAP 8 - Hipercorreção em PI baixa com alto risco de PJK
+        state.PI = 36;
+        state.SS = 34;
+        state.LL = 66;
+        state.L4S1 = 44;
+        state.GSA = 4;
+        state.Age = 72;
+      } else if (presetKey === 'ldi_baixo') {
+        // GAP 6 - Lordose total moderada mas LDI criticamente baixo (< 40%)
+        state.PI = 58;
+        state.SS = 38;
+        state.LL = 60;
+        state.L4S1 = 22;
+        state.GSA = 16;
+        state.Age = 55;
+      }
+      updateUI();
+    };
+
+    // Initial Launch
+    updateUI();
+  </script>
+</body>
+</html>
